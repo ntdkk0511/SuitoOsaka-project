@@ -19,7 +19,7 @@ import QuizModal from './components/QuizModal';
 import ARViewport from './components/ARViewport';
 import RankingModal from './components/RankingModal';
 
-mapboxgl.accessToken = 'pk.eyJ1IjoibnRka2swNTExIiwiYSI6ImNtcmQ0YjkyMzAxaWsyeXNoOGozbHpxZzUifQ.dnvJbGq2LBudQ_eiHnIn-w';
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DEFAULT_CENTER = [135.5036, 34.6932];
 
