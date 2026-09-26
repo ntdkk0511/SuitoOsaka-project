@@ -9,7 +9,10 @@ export default function BottomDock({
   onOpenAR
 }) {
   return (
-    <footer className="integrated-bottom-dock">
+    <footer 
+      className="integrated-bottom-dock"
+      style={{ bottom: '64px', position: 'fixed', left: 0, right: 0, zIndex: 30 }}
+    >
       <div className="embedded-story-card">
         <div className="card-meta">
           <span className="badge-purple">{currentSpot.englishName}</span>
@@ -51,7 +54,7 @@ export default function BottomDock({
               <button
                 className="core-trigger ready-unlock"
                 onClick={onOpenQuiz}
-                style={{ opacity: isNearSpot ? 1 : 0.6 }} // 近づいていない時は少し薄く
+                style={{ opacity: isNearSpot ? 1 : 0.6 }}
               >
                 <span className="core-icon">🔑</span>
               </button>
