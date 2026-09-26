@@ -3,7 +3,13 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 import { auth, db, googleProvider } from './firebase';
-import { signInAnonymously, onAuthStateChanged, linkWithPopup } from 'firebase/auth';
+import { 
+  signInAnonymously, 
+  onAuthStateChanged, 
+  linkWithPopup, 
+  EmailAuthProvider, 
+  linkWithCredential 
+} from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 import { SPOTS_DATA } from './constants/spots';
@@ -11,6 +17,7 @@ import { isWithinRadius } from './utils/geo';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useVisitedLocations } from './hooks/useVisitedLocations';
 import { useFogOverlay } from './hooks/useFogOverlay';
+import { useStepCounter } from './hooks/useStepCounter';
 
 import Splash from './components/Splash';
 import Header from './components/Header';
@@ -37,8 +44,13 @@ export default function App() {
   // 📍 GPS現在地を取得
   const { location: userLocation } = useGeolocation();
 
-  // 🚶 歩いた軌跡を自動管理するカスタムフック
-  const { visitedLocations } = useVisitedLocations(userLocation);
+  // 🚶 歩数計測フック
+  const { steps } = useStepCounter(userLocation);
+
+  // 歩数に応じたポイント自動計算
+  const prevProcessedStepsRef = useRef(
+    parseInt(localStorage.getItem('tw_processed_steps') || '0', 10)
+  );
 
   // セーブデータ
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('tw_score') || '420', 10));
@@ -52,6 +64,7 @@ export default function App() {
   // UI状態
   const [showSplash, setShowSplash] = useState(true);
   const [selectedSpotId, setSelectedSpotId] = useState('central-hall');
+  const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showAR, setShowAR] = useState(false);
   const [quizSelected, setQuizSelected] = useState(null);
@@ -63,13 +76,31 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [ranking, setRanking] = useState([]);
 
+  // 歩数ポイント変換
+  useEffect(() => {
+    const STEP_PER_POINT = 10;
+    const currentDiff = steps - prevProcessedStepsRef.current;
+
+    if (currentDiff >= STEP_PER_POINT) {
+      const earnedPoints = Math.floor(currentDiff / STEP_PER_POINT);
+      const consumedSteps = earnedPoints * STEP_PER_POINT;
+
+      setUserPoints((prev) => prev + earnedPoints);
+      prevProcessedStepsRef.current += consumedSteps;
+      localStorage.setItem('tw_processed_steps', prevProcessedStepsRef.current.toString());
+    }
+  }, [steps]);
+
+  // 🚶 軌跡フック
+  const { visitedLocations } = useVisitedLocations(userLocation);
+
   const fogRadiiRef = useRef({
     'central-hall': clearedSpots.includes('central-hall') ? 80 : 0,
     'nakanishima-park': clearedSpots.includes('nakanishima-park') ? 80 : 0,
     'osaka-castle-pier': clearedSpots.includes('osaka-castle-pier') ? 80 : 0
   });
 
-  // 🌫️ 霧描画ロジックをまとめたカスタムフック
+  // 🌫️ 霧フック
   const { updateFogPosition } = useFogOverlay({
     mapRef,
     fogOverlayRef,
@@ -82,8 +113,24 @@ export default function App() {
   const currentSpot = SPOTS_DATA.find(s => s.id === selectedSpotId) || SPOTS_DATA[0];
   const isCurrentCleared = clearedSpots.includes(selectedSpotId);
 
-  // 🎯 現在地がスポットの20m以内にいるか判定
-  const { isNear: isNearCurrentSpot } = isWithinRadius(userLocation, currentSpot.lngLat, 20);
+  // 🎯 選択中のスポットの40m以内にいるか判定
+  const { isNear: isNearCurrentSpot } = isWithinRadius(userLocation, currentSpot.lngLat, 40);
+
+  // 🚶 位置移動時：40m以内にスポットがあれば自動的にそのスポットに切り替える
+  useEffect(() => {
+    if (!userLocation) return;
+    const nearSpot = SPOTS_DATA.find((spot) => {
+      const { isNear } = isWithinRadius(userLocation, spot.lngLat, 40);
+      return isNear;
+    });
+
+    if (nearSpot) {
+      setSelectedSpotId(nearSpot.id);
+    }
+  }, [userLocation]);
+
+  // 💡 ピンタップ時 または 40m接近時のみドック表示
+  const shouldShowDock = isManuallySelected || isNearCurrentSpot;
 
   // LocalStorage 保存
   useEffect(() => localStorage.setItem('tw_score', score.toString()), [score]);
@@ -96,7 +143,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Firebase ログイン & データ同期
+  // Firebase
   useEffect(() => {
     signInAnonymously(auth).catch((err) => console.error(err));
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -147,15 +194,26 @@ export default function App() {
         const isCleared = clearedSpots.includes(spot.id);
         el.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'}`;
         el.innerHTML = `<div class="marker-core-circle"><div class="marker-pulse-ring"></div></div><div class="marker-core-label">${isCleared ? spot.name : '？？？'}</div>`;
-        el.addEventListener('click', (e) => { e.stopPropagation(); setSelectedSpotId(spot.id); });
+        
+        el.addEventListener('click', (e) => { 
+          e.stopPropagation(); 
+          setSelectedSpotId(spot.id);
+          setIsManuallySelected(true);
+        });
+
         new mapboxgl.Marker({ element: el, anchor: 'center' }).setLngLat(spot.lngLat).addTo(mapRef.current);
         markersRef.current[spot.id] = { element: el };
       });
+
+      mapRef.current.on('click', () => {
+        setIsManuallySelected(false);
+      });
+
       setTimeout(updateFogPosition, 200);
     });
   }, []);
 
-  // 📍 マップ上に現在地を表示 ＆ 初回のみジャンプ
+  // 📍 現在地表示
   useEffect(() => {
     if (!userLocation || !mapRef.current) return;
 
@@ -181,7 +239,7 @@ export default function App() {
     }
   }, [userLocation]);
 
-  // スポット選択時のマーカー更新 & カメラ移動
+  // スポット選択更新
   useEffect(() => {
     Object.keys(markersRef.current).forEach(id => {
       const { element } = markersRef.current[id];
@@ -247,6 +305,7 @@ export default function App() {
     setTimeout(() => { setIsFlash(false); setShowARSuccess(true); setScore(prev => prev + 100); }, 200);
   };
 
+  // 🌐 Google連携ハンドラー
   const handleLinkGoogle = async () => {
     try {
       if (!auth.currentUser) return alert("ログイン状態が確認できません。");
@@ -257,6 +316,24 @@ export default function App() {
     }
   };
 
+  // 📧 メールアドレス連携ハンドラー（※ここが抜けていたためエラーになっていました）
+  const handleLinkEmail = async (email, password) => {
+    try {
+      if (!auth.currentUser) return alert("ログイン状態が確認できません。");
+      const credential = EmailAuthProvider.credential(email, password);
+      await linkWithCredential(auth.currentUser, credential);
+      alert("🎉 メールアドレスでのアカウント連携に成功しました！");
+    } catch (error) {
+      if (error.code === 'auth/email-already-in-use') {
+        alert("このメールアドレスは既に他のアカウントで使用されています。");
+      } else if (error.code === 'auth/weak-password') {
+        alert("パスワードは6文字以上で入力してください。");
+      } else {
+        alert("連携エラー: " + error.message);
+      }
+    }
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#f9fafb' }}>
       {showSplash && <Splash />}
@@ -264,24 +341,26 @@ export default function App() {
       {/* 固定ヘッダー */}
       <Header userScore={score} userName={nickname} />
 
-      {/* メイン表示エリア（ヘッダーとタブバーの間に収まるように固定指定） */}
+      {/* メイン表示エリア */}
       <div style={{ position: 'absolute', top: '48px', bottom: '60px', left: 0, right: 0, overflowY: 'auto' }}>
         
-        {/* 🗺️ マップタブ (Mapbox破棄防止のため display で隠す) */}
+        {/* 🗺️ マップタブ */}
         <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
           <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
             <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
             <div ref={fogOverlayRef} className="map-fog-overlay" />
           </main>
 
-          <BottomDock
-            currentSpot={currentSpot}
-            isCurrentCleared={isCurrentCleared}
-            isNearSpot={isNearCurrentSpot}
-            onRecenter={handleRecenter}
-            onOpenQuiz={() => setShowQuiz(true)}
-            onOpenAR={() => setShowAR(true)}
-          />
+          {shouldShowDock && (
+            <BottomDock
+              currentSpot={currentSpot}
+              isCurrentCleared={isCurrentCleared}
+              isNearSpot={isNearCurrentSpot}
+              onRecenter={handleRecenter}
+              onOpenQuiz={() => setShowQuiz(true)}
+              onOpenAR={() => setShowAR(true)}
+            />
+          )}
         </div>
 
         {/* 📖 図鑑タブ */}
@@ -307,7 +386,7 @@ export default function App() {
           </div>
         )}
 
-        {/* 🎁 特典（クーポン）タブ */}
+        {/* 🎁 特典タブ */}
         {activeTab === 'rewards' && (
           <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
             <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🎁 特典・クーポン</h2>
@@ -357,7 +436,9 @@ export default function App() {
             setUserName={setNickname}
             userScore={score}
             userPoints={userPoints}
+            steps={steps}
             onGoogleLogin={handleLinkGoogle}
+            onEmailLogin={handleLinkEmail}
             user={user}
           />
         )}

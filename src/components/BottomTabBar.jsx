@@ -2,11 +2,11 @@ import React from 'react';
 
 export function BottomTabBar({ activeTab, setActiveTab }) {
   const tabs = [
-    { id: 'map', label: 'マップ', icon: '🗺️' },
-    { id: 'encyclopedia', label: '図鑑', icon: '📖' },
-    { id: 'rewards', label: '特典', icon: '🎁' },
-    { id: 'ranking', label: '順位', icon: '🏆' },
-    { id: 'mypage', label: 'マイ', icon: '👤' },
+    { id: 'map', icon: '🗺️' },
+    { id: 'encyclopedia', icon: '📖' },
+    { id: 'rewards', icon: '🎁' },
+    { id: 'ranking', icon: '🏆' },
+    { id: 'mypage', icon: '👤' },
   ];
 
   return (

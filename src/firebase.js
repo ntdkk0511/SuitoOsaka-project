@@ -1,6 +1,6 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth,GoogleAuthProvider} from "firebase/auth";
+import { getAuth,GoogleAuthProvider,EmailAuthProvider} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 // 🔥 Firebaseコンソールで取得したご自身のプロジェクトの設定に差し替えてください
@@ -22,3 +22,4 @@ export const db = getFirestore(app);
 
 //Google認証プロバイダーのインスタンスを作成
 export const googleProvider = new GoogleAuthProvider();
+export const emailProvider = new EmailAuthProvider();
