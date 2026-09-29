@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- 背景グラデーション (透明感のあるスカイブルー) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7dd3fc" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+
+    <!-- 水面の波グラデーション -->
+    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.3" />
+    </linearGradient>
+
+    <!-- シャドウ効果 -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0369a1" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- 角丸アイコンベース (iOS/Android標準ベース) -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- 背景の揺らめく波模様 -->
+  <path d="M 0 340 Q 120 310, 256 340 T 512 340 L 512 512 L 0 512 Z" fill="url(#waveGrad)" />
+  <path d="M 0 380 Q 140 360, 256 380 T 512 380 L 512 512 L 0 512 Z" fill="#ffffff" fill-opacity="0.25" />
+
+  <!-- 湧き上がる気泡 -->
+  <circle cx="100" cy="400" r="10" fill="#ffffff" opacity="0.6" />
+  <circle cx="420" cy="370" r="14" fill="#ffffff" opacity="0.5" />
+  <circle cx="380" cy="420" r="8" fill="#ffffff" opacity="0.7" />
+
+  <!-- メインシンボル：水滴 × マップピン × 時計の針 (Time-Walk) -->
+  <g filter="url(#dropShadow)" transform="translate(0, -10)">
+    <!-- 水滴 兼 マップピンのシルエット -->
+    <path d="M 256 110 
+             C 180 110, 130 170, 130 240 
+             C 130 320, 256 410, 256 410 
+             C 256 410, 382 320, 382 240 
+             C 382 170, 332 110, 256 110 Z" 
+          fill="#ffffff" />
+
+    <!-- ピン内部の円（透明水色） -->
+    <circle cx="256" cy="235" r="70" fill="#e0f2fe" opacity="0.9" />
+
+    <!-- 時計の文字盤目盛り（12時, 3時, 6時, 9時） -->
+    <circle cx="256" cy="180" r="4" fill="#0284c7" />
+    <circle cx="311" cy="235" r="4" fill="#0284c7" />
+    <circle cx="256" cy="290" r="4" fill="#0284c7" />
+    <circle cx="201" cy="235" r="4" fill="#0284c7" />
+
+    <!-- 時計の針 (Time) & 歩む進行針 (Walk) -->
+    <!-- 短針 (時針) -->
+    <line x1="256" y1="235" x2="256" y2="195" stroke="#0284c7" stroke-width="8" stroke-linecap="round" />
+    <!-- 長針 (分針) -->
+    <line x1="256" y1="235" x2="290" y2="220" stroke="#0284c7" stroke-width="7" stroke-linecap="round" />
+    <!-- 針の軸心 -->
+    <circle cx="256" cy="235" r="8" fill="#0284c7" />
+  </g>
+</svg>

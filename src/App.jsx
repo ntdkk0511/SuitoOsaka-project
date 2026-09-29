@@ -26,6 +26,7 @@ import QuizModal from './components/QuizModal';
 import ARViewport from './components/ARViewport';
 import BottomTabBar from './components/BottomTabBar';
 import MyPageView from './components/MyPageView';
+import LiquidLoader from './components/LiquidLoader';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -63,6 +64,9 @@ export default function App() {
 
   // UI状態
   const [showSplash, setShowSplash] = useState(true);
+  const [showLiquidLoader, setShowLiquidLoader] = useState(false);
+  const [waterProgress, setWaterProgress] = useState(0);
+
   const [selectedSpotId, setSelectedSpotId] = useState('central-hall');
   const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
@@ -137,11 +141,32 @@ export default function App() {
   useEffect(() => localStorage.setItem('tw_cleared_spots', JSON.stringify(clearedSpots)), [clearedSpots]);
   useEffect(() => localStorage.setItem('tw_nickname', nickname), [nickname]);
 
-  // スプラッシュタイマー
+  // 💧 1. 最初にスプラッシュ表示 ➔ 完了後に水満ち演出（LiquidLoader）を起動
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2500);
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+      setShowLiquidLoader(true);
+    }, 2200);
     return () => clearTimeout(timer);
   }, []);
+
+  // 💧 2. 水が0%から100%まで溜まっていくカウントアップアニメーション
+  useEffect(() => {
+    if (!showLiquidLoader) return;
+
+    const interval = setInterval(() => {
+      setWaterProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setShowLiquidLoader(false), 400); // 100%完了後に少し余韻を残して閉じる
+          return 100;
+        }
+        return prev + 4; // 約1.2秒で100%まで満ちる
+      });
+    }, 40);
+
+    return () => clearInterval(interval);
+  }, [showLiquidLoader]);
 
   // Firebase
   useEffect(() => {
@@ -316,7 +341,7 @@ export default function App() {
     }
   };
 
-  // 📧 メールアドレス連携ハンドラー（※ここが抜けていたためエラーになっていました）
+  // 📧 メールアドレス連携ハンドラー
   const handleLinkEmail = async (email, password) => {
     try {
       if (!auth.currentUser) return alert("ログイン状態が確認できません。");
@@ -336,7 +361,15 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#f9fafb' }}>
+      {/* 既存のスプラッシュ画面 */}
       {showSplash && <Splash />}
+
+      {/* 追加した水が満ちるアニメーション画面 */}
+      <LiquidLoader
+        show={showLiquidLoader}
+        progress={waterProgress}
+        message="水の都マップを読み込んでいます..."
+      />
 
       {/* 固定ヘッダー */}
       <Header userScore={score} userName={nickname} />
