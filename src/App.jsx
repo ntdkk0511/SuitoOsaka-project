@@ -27,6 +27,7 @@ import ARViewport from './components/ARViewport';
 import BottomTabBar from './components/BottomTabBar';
 import MyPageView from './components/MyPageView';
 import LiquidLoader from './components/LiquidLoader';
+import { EncyclopediaModal } from './components/EncyclopediaModal';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -48,7 +49,6 @@ export default function App() {
   // 🚶 歩数計測フック
   const { steps } = useStepCounter(userLocation);
 
-  // 歩数に応じたポイント自動計算
   const prevProcessedStepsRef = useRef(
     parseInt(localStorage.getItem('tw_processed_steps') || '0', 10)
   );
@@ -71,6 +71,7 @@ export default function App() {
   const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
   const [showAR, setShowAR] = useState(false);
+  const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
   const [quizSelected, setQuizSelected] = useState(null);
   const [quizFeedback, setQuizFeedback] = useState('');
   const [isFlash, setIsFlash] = useState(false);
@@ -79,6 +80,17 @@ export default function App() {
   // Firebase
   const [user, setUser] = useState(null);
   const [ranking, setRanking] = useState([]);
+
+  // 🚀 起動演出中フラグ
+  const isAppLoading = showSplash || showLiquidLoader;
+
+  // タブ変更時のハンドラー
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    if (tabId === 'encyclopedia') {
+      setIsEncyclopediaOpen(true);
+    }
+  };
 
   // 歩数ポイント変換
   useEffect(() => {
@@ -133,7 +145,6 @@ export default function App() {
     }
   }, [userLocation]);
 
-  // 💡 ピンタップ時 または 40m接近時のみドック表示
   const shouldShowDock = isManuallySelected || isNearCurrentSpot;
 
   // LocalStorage 保存
@@ -141,7 +152,7 @@ export default function App() {
   useEffect(() => localStorage.setItem('tw_cleared_spots', JSON.stringify(clearedSpots)), [clearedSpots]);
   useEffect(() => localStorage.setItem('tw_nickname', nickname), [nickname]);
 
-  // 💧 1. 最初にスプラッシュ表示 ➔ 完了後に水満ち演出（LiquidLoader）を起動
+  // 💧 1. スプラッシュ表示 ➔ 完了後に LiquidLoader 起動
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
@@ -150,7 +161,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  // 💧 2. 水が0%から100%まで溜まっていくカウントアップアニメーション
+  // 💧 2. 水のローディングアニメーション
   useEffect(() => {
     if (!showLiquidLoader) return;
 
@@ -158,17 +169,17 @@ export default function App() {
       setWaterProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(() => setShowLiquidLoader(false), 400); // 100%完了後に少し余韻を残して閉じる
+          setTimeout(() => setShowLiquidLoader(false), 400);
           return 100;
         }
-        return prev + 4; // 約1.2秒で100%まで満ちる
+        return prev + 4;
       });
     }, 40);
 
     return () => clearInterval(interval);
   }, [showLiquidLoader]);
 
-  // Firebase
+  // Firebase 認証＆ランキング
   useEffect(() => {
     signInAnonymously(auth).catch((err) => console.error(err));
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -201,15 +212,15 @@ export default function App() {
     }
   }, [score, clearedSpots, nickname, user]);
 
-  // Mapbox 初期化
+  // Mapbox 初期化（ローディング完了後にDOMが存在するタイミングで初期化）
   useEffect(() => {
-    if (mapRef.current) return;
+    if (isAppLoading || mapRef.current || !mapContainerRef.current) return;
 
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: DEFAULT_CENTER,
-      zoom: 13.5,
+      zoom: 17,
       pitch: 15
     });
 
@@ -236,11 +247,11 @@ export default function App() {
 
       setTimeout(updateFogPosition, 200);
     });
-  }, []);
+  }, [isAppLoading]);
 
   // 📍 現在地表示
   useEffect(() => {
-    if (!userLocation || !mapRef.current) return;
+    if (isAppLoading || !userLocation || !mapRef.current) return;
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
@@ -260,20 +271,24 @@ export default function App() {
 
     if (!hasCenteredOnUserRef.current) {
       hasCenteredOnUserRef.current = true;
-      mapRef.current.flyTo({ center: userLocation, zoom: 15, pitch: 15, duration: 1200 });
+      mapRef.current.flyTo({ center: userLocation, zoom: 17, pitch: 15, duration: 1200 });
     }
-  }, [userLocation]);
+  }, [userLocation, isAppLoading]);
 
   // スポット選択更新
   useEffect(() => {
+    if (isAppLoading) return;
+
     Object.keys(markersRef.current).forEach(id => {
       const { element } = markersRef.current[id];
       const spot = SPOTS_DATA.find(s => s.id === id);
       const isCleared = clearedSpots.includes(id);
       const isSelected = id === selectedSpotId;
-      element.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
-      const labelEl = element.querySelector('.marker-core-label');
-      if (labelEl) labelEl.textContent = isCleared ? spot.name : '？？？';
+      if (element) {
+        element.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
+        const labelEl = element.querySelector('.marker-core-label');
+        if (labelEl) labelEl.textContent = isCleared ? spot.name : '？？？';
+      }
     });
 
     if (mapRef.current) {
@@ -284,13 +299,12 @@ export default function App() {
       }
       setTimeout(updateFogPosition, 650);
     }
-  }, [selectedSpotId, clearedSpots]);
+  }, [selectedSpotId, clearedSpots, isAppLoading]);
 
-  // アクションハンドラー
   const handleRecenter = () => {
     if (mapRef.current) {
       const target = userLocation || currentSpot.lngLat;
-      mapRef.current.flyTo({ center: target, zoom: 15, pitch: 20 });
+      mapRef.current.flyTo({ center: target, zoom: 17, pitch: 20 });
     }
   };
 
@@ -312,7 +326,7 @@ export default function App() {
       setQuizFeedback('✨ 正解！エリアの霧が晴れました！');
       setTimeout(() => {
         fogRadiiRef.current[currentSpot.id] = 0;
-        if (mapRef.current) mapRef.current.flyTo({ center: currentSpot.lngLat, zoom: 15.5, pitch: 35 });
+        if (mapRef.current) mapRef.current.flyTo({ center: currentSpot.lngLat, zoom: 18, pitch: 35 });
         animateFogReveal(currentSpot.id);
         setClearedSpots(prev => [...prev, currentSpot.id]);
         setScore(prev => prev + 100);
@@ -330,7 +344,6 @@ export default function App() {
     setTimeout(() => { setIsFlash(false); setShowARSuccess(true); setScore(prev => prev + 100); }, 200);
   };
 
-  // 🌐 Google連携ハンドラー
   const handleLinkGoogle = async () => {
     try {
       if (!auth.currentUser) return alert("ログイン状態が確認できません。");
@@ -341,7 +354,6 @@ export default function App() {
     }
   };
 
-  // 📧 メールアドレス連携ハンドラー
   const handleLinkEmail = async (email, password) => {
     try {
       if (!auth.currentUser) return alert("ログイン状態が確認できません。");
@@ -361,146 +373,165 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#f9fafb' }}>
-      {/* 既存のスプラッシュ画面 */}
+      {/* 1. スプラッシュ画面 */}
       {showSplash && <Splash />}
 
-      {/* 追加した水が満ちるアニメーション画面 */}
+      {/* 2. 水のローディング画面 */}
       <LiquidLoader
         show={showLiquidLoader}
         progress={waterProgress}
         message="水の都マップを読み込んでいます..."
       />
 
-      {/* 固定ヘッダー */}
-      <Header userScore={score} userName={nickname} />
+      {/* 3. 起動完了後（Splash / LiquidLoader 終了後）にのみアプリ本体の画面要素を表示 */}
+      {!isAppLoading && (
+        <>
+          {/* 固定ヘッダー */}
+          <Header userScore={score} userName={nickname} />
 
-      {/* メイン表示エリア */}
-      <div style={{ position: 'absolute', top: '48px', bottom: '60px', left: 0, right: 0, overflowY: 'auto' }}>
-        
-        {/* 🗺️ マップタブ */}
-        <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
-          <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
-            <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
-            <div ref={fogOverlayRef} className="map-fog-overlay" />
-          </main>
+          {/* メイン表示エリア */}
+          <div style={{ position: 'absolute', top: '48px', bottom: '82px', left: 0, right: 0, overflowY: 'auto' }}>
+            
+            {/* 🗺️ マップタブ */}
+            <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
+              <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
+                <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
+                <div ref={fogOverlayRef} className="map-fog-overlay" />
+              </main>
 
-          {shouldShowDock && (
-            <BottomDock
+              {shouldShowDock && (
+                <BottomDock
+                  currentSpot={currentSpot}
+                  isCurrentCleared={isCurrentCleared}
+                  isNearSpot={isNearCurrentSpot}
+                  onRecenter={handleRecenter}
+                  onOpenQuiz={() => setShowQuiz(true)}
+                  onOpenAR={() => setShowAR(true)}
+                />
+              )}
+            </div>
+
+            {/* 📖 図鑑タブ */}
+            {activeTab === 'encyclopedia' && (
+              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>📖 スポット図鑑</h2>
+                <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>タップすると本を開いて閲覧できます。</p>
+                <button 
+                  onClick={() => setIsEncyclopediaOpen(true)}
+                  style={{ width: '100%', padding: '12px', background: '#3b200b', color: '#fef3c7', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '16px' }}
+                >
+                  📘 3D図鑑を開く
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {SPOTS_DATA.map((spot) => {
+                    const isCleared = clearedSpots.includes(spot.id);
+                    return (
+                      <div key={spot.id} style={{ padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <p style={{ fontWeight: 'bold', fontSize: '14px', margin: 0, color: '#333' }}>{isCleared ? spot.name : '？？？'}</p>
+                          <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>{isCleared ? spot.desc : '未開拓のスポットです。現地でクイズを解くと解放されます！'}</p>
+                        </div>
+                        <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', whiteSpace: 'nowrap', marginLeft: '8px', background: isCleared ? '#dcfce7' : '#f3f4f6', color: isCleared ? '#15803d' : '#9ca3af' }}>
+                          {isCleared ? '解放済' : '未解放'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 🎁 特典タブ */}
+            {activeTab === 'rewards' && (
+              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🎁 特典・クーポン</h2>
+                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
+                  <p style={{ fontSize: '12px', color: '#b45309', margin: 0, fontWeight: '500' }}>現在の所持ポイント</p>
+                  <p style={{ fontSize: '28px', fontWeight: '800', color: '#78350f', margin: '4px 0 0 0' }}>{userPoints} <span style={{ fontSize: '14px', fontWeight: 'normal' }}>pt</span></p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#444', margin: 0 }}>利用可能なクーポン</h3>
+                  <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontWeight: 'bold', fontSize: '14px', margin: 0, color: '#333' }}>ドラッグストアコスモス 50円引き</p>
+                      <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>必要ポイント: 100 pt</p>
+                    </div>
+                    <button style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                      交換
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 🏆 ランキングタブ */}
+            {activeTab === 'ranking' && (
+              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🏆 スコアランキング</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {ranking.map((item, index) => (
+                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: '#fff', background: index === 0 ? '#f59e0b' : index === 1 ? '#9ca3af' : index === 2 ? '#b45309' : '#e5e7eb' }}>
+                          {index + 1}
+                        </span>
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>{item.nickname || '名無し'}</span>
+                      </div>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb' }}>{item.score || 0} pt</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 👤 マイページタブ */}
+            {activeTab === 'mypage' && (
+              <MyPageView
+                userName={nickname}
+                setUserName={setNickname}
+                userScore={score}
+                userPoints={userPoints}
+                steps={steps}
+                onGoogleLogin={handleLinkGoogle}
+                onEmailLogin={handleLinkEmail}
+                user={user}
+              />
+            )}
+          </div>
+
+          {/* 画面固定の5タブナビゲーション */}
+          <BottomTabBar activeTab={activeTab} setActiveTab={handleTabChange} />
+
+          {/* 📖 本（図鑑）モーダル */}
+          <EncyclopediaModal 
+            isOpen={isEncyclopediaOpen} 
+            onClose={() => setIsEncyclopediaOpen(false)} 
+          />
+
+          {/* クイズモーダル */}
+          {showQuiz && (
+            <QuizModal
               currentSpot={currentSpot}
-              isCurrentCleared={isCurrentCleared}
-              isNearSpot={isNearCurrentSpot}
-              onRecenter={handleRecenter}
-              onOpenQuiz={() => setShowQuiz(true)}
-              onOpenAR={() => setShowAR(true)}
+              quizSelected={quizSelected}
+              setQuizSelected={setQuizSelected}
+              quizFeedback={quizFeedback}
+              onClose={() => { setShowQuiz(false); setQuizSelected(null); setQuizFeedback(''); }}
+              onSubmit={handleAnswerSubmit}
             />
           )}
-        </div>
 
-        {/* 📖 図鑑タブ */}
-        {activeTab === 'encyclopedia' && (
-          <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>📖 スポット図鑑</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {SPOTS_DATA.map((spot) => {
-                const isCleared = clearedSpots.includes(spot.id);
-                return (
-                  <div key={spot.id} style={{ padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontWeight: 'bold', fontSize: '14px', margin: 0, color: '#333' }}>{isCleared ? spot.name : '？？？'}</p>
-                      <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>{isCleared ? spot.desc : '未開拓のスポットです。現地でクイズを解くと解放されます！'}</p>
-                    </div>
-                    <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', fontWeight: 'bold', whiteSpace: 'nowrap', marginLeft: '8px', background: isCleared ? '#dcfce7' : '#f3f4f6', color: isCleared ? '#15803d' : '#9ca3af' }}>
-                      {isCleared ? '解放済' : '未解放'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* 🎁 特典タブ */}
-        {activeTab === 'rewards' && (
-          <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🎁 特典・クーポン</h2>
-            <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-              <p style={{ fontSize: '12px', color: '#b45309', margin: 0, fontWeight: '500' }}>現在の所持ポイント</p>
-              <p style={{ fontSize: '28px', fontWeight: '800', color: '#78350f', margin: '4px 0 0 0' }}>{userPoints} <span style={{ fontSize: '14px', fontWeight: 'normal' }}>pt</span></p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#444', margin: 0 }}>利用可能なクーポン</h3>
-              <div style={{ background: '#fff', padding: '12px', borderRadius: '12px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontWeight: 'bold', fontSize: '14px', margin: 0, color: '#333' }}>ドラッグストアコスモス 50円引き</p>
-                  <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>必要ポイント: 100 pt</p>
-                </div>
-                <button style={{ background: '#f59e0b', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                  交換
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 🏆 ランキングタブ */}
-        {activeTab === 'ranking' && (
-          <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🏆 スコアランキング</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {ranking.map((item, index) => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '12px', color: '#fff', background: index === 0 ? '#f59e0b' : index === 1 ? '#9ca3af' : index === 2 ? '#b45309' : '#e5e7eb' }}>
-                      {index + 1}
-                    </span>
-                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>{item.nickname || '名無し'}</span>
-                  </div>
-                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb' }}>{item.score || 0} pt</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 👤 マイページタブ */}
-        {activeTab === 'mypage' && (
-          <MyPageView
-            userName={nickname}
-            setUserName={setNickname}
-            userScore={score}
-            userPoints={userPoints}
-            steps={steps}
-            onGoogleLogin={handleLinkGoogle}
-            onEmailLogin={handleLinkEmail}
-            user={user}
-          />
-        )}
-      </div>
-
-      {/* 画面固定の5タブナビゲーション */}
-      <BottomTabBar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* モーダル表示 */}
-      {showQuiz && (
-        <QuizModal
-          currentSpot={currentSpot}
-          quizSelected={quizSelected}
-          setQuizSelected={setQuizSelected}
-          quizFeedback={quizFeedback}
-          onClose={() => { setShowQuiz(false); setQuizSelected(null); setQuizFeedback(''); }}
-          onSubmit={handleAnswerSubmit}
-        />
-      )}
-
-      {showAR && (
-        <ARViewport
-          currentSpot={currentSpot}
-          isFlash={isFlash}
-          showARSuccess={showARSuccess}
-          onShutter={handleARShutter}
-          onClose={() => setShowAR(false)}
-          onCloseSuccess={() => { setShowARSuccess(false); setShowAR(false); }}
-        />
+          {/* ARモーダル */}
+          {showAR && (
+            <ARViewport
+              currentSpot={currentSpot}
+              isFlash={isFlash}
+              showARSuccess={showARSuccess}
+              onShutter={handleARShutter}
+              onClose={() => setShowAR(false)}
+              onCloseSuccess={() => { setShowARSuccess(false); setShowAR(false); }}
+            />
+          )}
+        </>
       )}
     </div>
   );
