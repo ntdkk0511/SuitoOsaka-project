@@ -18,7 +18,7 @@ export function EncyclopediaModal({ isOpen, onClose }) {
       setTimeout(() => {
         setCurrentPage((prev) => prev + 1);
         setIsFlipping(false);
-      }, 750); // 滑らかなコマ送りに合わせて0.75秒に最適化
+      }, 750);
     }
   };
 
@@ -40,69 +40,103 @@ export function EncyclopediaModal({ isOpen, onClose }) {
         .encyclopedia-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(10, 15, 25, 0.8);
+          background: rgba(10, 15, 25, 0.82);
           backdrop-filter: blur(10px);
           z-index: 9999;
           display: flex;
           align-items: center;
-          justify-content: flex-end; /* 右寄りに配置して左側を見切れさせる */
-          padding: 16px 0 16px 16px;
-          overflow: hidden;
+          justify-content: center;
+          padding: 16px;
         }
 
-        /* 3D本のコンテナ（画面左側に少し見切れさせた構図） */
+        /* 3D本のコンテナ */
         .book-container {
           position: relative;
-          width: 92vw;
+          width: 100%;
           max-width: 380px;
           height: 540px;
-          perspective: 1600px; /* 超立体的な遠近感 */
+          perspective: 1600px;
           user-select: none;
-          transform: translateX(-24px); /* 本の左端（背表紙側）を画面外に見切れさせる */
         }
 
-        /* 本の表紙・台座 */
+        /* 本の外枠・表紙の厚み */
         .book-base {
           position: absolute;
           inset: 0;
-          background: #0d1527;
-          border-radius: 0 16px 16px 0; /* 左側は見切れるため丸みを右側に集約 */
-          box-shadow: -10px 30px 60px rgba(0, 0, 0, 0.8),
-                      0 0 0 1px rgba(255, 255, 255, 0.08);
-          padding: 8px 8px 8px 24px; /* 左綴じ代を深く確保 */
+          background: #1e293b; /* 本の表紙（レザー調のダークグラデーション） */
+          border-radius: 8px 14px 14px 8px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85),
+                      0 0 0 1px rgba(255, 255, 255, 0.1);
+          padding: 3px 4px 4px 3px;
         }
 
-        /* 📄 下に敷かれている紙（白） */
-        .paper-page {
+        /* 📖 開いた見開き本の紙面構造 */
+        .open-book-spread {
           position: relative;
           width: 100%;
           height: 100%;
-          background: #ffffff;
-          border-radius: 2px 10px 10px 2px;
-          overflow: hidden;
           display: flex;
-          flex-direction: column;
-          box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.05);
+          border-radius: 6px 12px 12px 6px;
+          overflow: hidden;
+          background: #ffffff;
         }
 
-        /* 画面見切れ位置（ノド・綴じ目）の深い立体影 */
-        .paper-page::before {
+        /* 📄 1. 左ページのチラ見えエリア（影になった左側の紙） */
+        .left-page-peek {
+          width: 36px;
+          height: 100%;
+          background: linear-gradient(to left, #e2e8f0 0%, #cbd5e1 100%);
+          position: relative;
+          flex-shrink: 0;
+          border-right: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        /* 左ページのダミー行テキスト（見切れの雰囲気演出） */
+        .left-page-peek::after {
           content: '';
           position: absolute;
-          top: 0;
-          bottom: 0;
-          left: 0;
-          width: 36px;
-          background: linear-gradient(to right, 
-            rgba(0,0,0,0.35) 0%, 
-            rgba(0,0,0,0.12) 40%, 
-            rgba(0,0,0,0) 100%
+          top: 40px;
+          left: 8px;
+          right: 8px;
+          bottom: 40px;
+          background: repeating-linear-gradient(
+            to bottom,
+            rgba(100, 116, 139, 0.2) 0px,
+            rgba(100, 116, 139, 0.2) 2px,
+            transparent 2px,
+            transparent 12px
           );
-          pointer-events: none;
-          z-index: 10;
         }
 
-        /* 🌀 動的ドロップシャドウ（下のページへ落ちる影） */
+        /* 📕 2. 本の中央（ノド・本の谷間）の立体溝影 */
+        .book-spine {
+          position: absolute;
+          left: 36px;
+          top: 0;
+          bottom: 0;
+          width: 20px;
+          background: linear-gradient(to right, 
+            rgba(0, 0, 0, 0.35) 0%, 
+            rgba(0, 0, 0, 0.15) 30%, 
+            rgba(0, 0, 0, 0.03) 70%,
+            rgba(0, 0, 0, 0) 100%
+          );
+          pointer-events: none;
+          z-index: 20;
+        }
+
+        /* 📄 3. 右ページ（メインコンテンツ表示部） */
+        .right-page-main {
+          flex: 1;
+          height: 100%;
+          background: #ffffff;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          box-shadow: inset -6px 0 12px rgba(0, 0, 0, 0.03);
+        }
+
+        /* 🌀 動的ドロップシャドウ（めくられる紙が右ページに落とす影） */
         .under-page-shadow {
           position: absolute;
           inset: 0;
@@ -120,24 +154,24 @@ export function EncyclopediaModal({ isOpen, onClose }) {
         }
 
         @keyframes underShadowNext {
-          0% { background: linear-gradient(to left, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
-          40% { background: linear-gradient(to left, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%); opacity: 1; }
+          0% { background: linear-gradient(to left, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
+          40% { background: linear-gradient(to left, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%); opacity: 1; }
           100% { background: linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
         }
 
         @keyframes underShadowPrev {
           0% { background: linear-gradient(to right, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
-          40% { background: linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 70%); opacity: 1; }
-          100% { background: linear-gradient(to left, rgba(0,0,0,0.25) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
+          40% { background: linear-gradient(to right, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%); opacity: 1; }
+          100% { background: linear-gradient(to left, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 40%); opacity: 0; }
         }
 
-        /* 🌀 3Dめくり紙シート（GPU描画最適化） */
+        /* 🌀 3Dめくり紙シート（ノドの位置＝left: 36px を回転軸に設定） */
         .flipping-sheet-3d {
           position: absolute;
-          top: 8px;
-          bottom: 8px;
-          right: 8px;
-          left: 24px;
+          top: 3px;
+          bottom: 4px;
+          right: 4px;
+          left: 39px; /* ノドの位置に正確に合わせる */
           transform-origin: left center;
           transform-style: preserve-3d;
           pointer-events: none;
@@ -151,12 +185,12 @@ export function EncyclopediaModal({ isOpen, onClose }) {
 
         .flipping-sheet-3d.anim-prev {
           transform-origin: right center;
-          left: 8px;
-          right: 24px;
+          left: 39px;
+          right: 4px;
           animation: smoothPageTurnPrev 0.75s cubic-bezier(0.33, 1, 0.68, 1) forwards;
         }
 
-        /* 表面と裏面 */
+        /* 紙の表裏 */
         .paper-face {
           position: absolute;
           inset: 0;
@@ -177,7 +211,7 @@ export function EncyclopediaModal({ isOpen, onClose }) {
           border-radius: 10px 2px 2px 10px;
         }
 
-        /* 光の波（湾曲ハイライト） */
+        /* 光と影のカールエフェクト */
         .curl-overlay {
           position: absolute;
           inset: 0;
@@ -200,49 +234,26 @@ export function EncyclopediaModal({ isOpen, onClose }) {
           100% { background-position: -120% 0; }
         }
 
-        /* ✨ カクツキのない超スムーズな紙旋回＆手前への撓み（3D補間） */
+        /* 3D旋回＆撓みモーション */
         @keyframes smoothPageTurnNext {
-          0% {
-            transform: translate3d(0, 0, 0) rotateY(0deg) skewY(0deg);
-          }
-          25% {
-            /* 手前に持ち上がりつつ滑らかに傾き始める */
-            transform: translate3d(-10px, -6px, 35px) rotateY(-45deg) skewY(-3.5deg);
-          }
-          50% {
-            /* 頂点：紙が大きくしなり手前にせり出す */
-            transform: translate3d(-20px, -10px, 50px) rotateY(-90deg) skewY(-1deg);
-          }
-          75% {
-            /* 反対側へ着地に向かいながら収束 */
-            transform: translate3d(-10px, -4px, 25px) rotateY(-135deg) skewY(2deg);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) rotateY(-180deg) skewY(0deg);
-          }
+          0% { transform: translate3d(0, 0, 0) rotateY(0deg) skewY(0deg); }
+          25% { transform: translate3d(-6px, -4px, 30px) rotateY(-45deg) skewY(-3deg); }
+          50% { transform: translate3d(-12px, -8px, 45px) rotateY(-90deg) skewY(-1deg); }
+          75% { transform: translate3d(-6px, -3px, 20px) rotateY(-135deg) skewY(2deg); }
+          100% { transform: translate3d(0, 0, 0) rotateY(-180deg) skewY(0deg); }
         }
 
         @keyframes smoothPageTurnPrev {
-          0% {
-            transform: translate3d(0, 0, 0) rotateY(0deg) skewY(0deg);
-          }
-          25% {
-            transform: translate3d(10px, -6px, 35px) rotateY(45deg) skewY(3.5deg);
-          }
-          50% {
-            transform: translate3d(20px, -10px, 50px) rotateY(90deg) skewY(1deg);
-          }
-          75% {
-            transform: translate3d(10px, -4px, 25px) rotateY(135deg) skewY(-2deg);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) rotateY(180deg) skewY(0deg);
-          }
+          0% { transform: translate3d(0, 0, 0) rotateY(0deg) skewY(0deg); }
+          25% { transform: translate3d(6px, -4px, 30px) rotateY(45deg) skewY(3deg); }
+          50% { transform: translate3d(12px, -8px, 45px) rotateY(90deg) skewY(1deg); }
+          75% { transform: translate3d(6px, -3px, 20px) rotateY(135deg) skewY(-2deg); }
+          100% { transform: translate3d(0, 0, 0) rotateY(180deg) skewY(0deg); }
         }
 
-        /* レイアウト部（見切れ構図に合わせた余白設計） */
+        /* レイアウト部 */
         .book-header {
-          padding: 16px 16px 12px 36px;
+          padding: 16px 16px 12px 20px;
           border-bottom: 1px solid #f1f5f9;
           display: flex;
           justify-content: space-between;
@@ -273,7 +284,7 @@ export function EncyclopediaModal({ isOpen, onClose }) {
         }
 
         .book-body {
-          padding: 20px 20px 20px 40px; /* 左側の深見影を避けて広めに確保 */
+          padding: 20px 20px 20px 24px;
           flex: 1;
           display: flex;
           flex-direction: column;
@@ -311,7 +322,7 @@ export function EncyclopediaModal({ isOpen, onClose }) {
         }
 
         .book-footer {
-          padding: 12px 16px 14px 36px;
+          padding: 12px 16px 14px 20px;
           border-top: 1px solid #f1f5f9;
           display: flex;
           justify-content: space-between;
@@ -343,50 +354,59 @@ export function EncyclopediaModal({ isOpen, onClose }) {
 
       <div className="book-container" onClick={(e) => e.stopPropagation()}>
         <div className="book-base">
-          <div className="paper-page">
-            <div className="book-header">
-              <span className="book-title">📘 水の都ガイドブック</span>
-              <button className="book-close-btn" onClick={onClose}>✕</button>
-            </div>
+          <div className="open-book-spread">
+            {/* 1. チラ見えする左ページ */}
+            <div className="left-page-peek" />
 
-            <div className="book-body">
-              <span className="spot-badge">SPOT #{spot.id}</span>
-              <h2 className="spot-name">{spot.name}</h2>
-              <div className="spot-desc">
-                {spot.desc || 'このスポットの詳しい歴史や魅力がここに記載されます。現地を訪れて探索を進めましょう！'}
+            {/* 2. 本の中央（ノド）の立体影 */}
+            <div className="book-spine" />
+
+            {/* 3. メイン表示の右ページ */}
+            <div className="right-page-main">
+              <div className="book-header">
+                <span className="book-title">📘 水の都ガイドブック</span>
+                <button className="book-close-btn" onClick={onClose}>✕</button>
               </div>
+
+              <div className="book-body">
+                <span className="spot-badge">SPOT #{spot.id}</span>
+                <h2 className="spot-name">{spot.name}</h2>
+                <div className="spot-desc">
+                  {spot.desc || 'このスポットの詳しい歴史や魅力がここに記載されます。現地を訪れて探索を進めましょう！'}
+                </div>
+              </div>
+
+              <div className="book-footer">
+                <button 
+                  className="page-btn" 
+                  onClick={handlePrev} 
+                  disabled={currentPage === 0 || isFlipping}
+                >
+                  ◀ 前のページ
+                </button>
+
+                <span className="page-num">
+                  {currentPage + 1} / {totalPages}
+                </span>
+
+                <button 
+                  className="page-btn" 
+                  onClick={handleNext} 
+                  disabled={currentPage === totalPages - 1 || isFlipping}
+                >
+                  次のページ ▶
+                </button>
+              </div>
+
+              {/* 下の固定ページに落ちる動的な影 */}
+              {isFlipping && (
+                <div className={`under-page-shadow ${flipDirection === 'next' ? 'anim-next' : 'anim-prev'}`} />
+              )}
             </div>
-
-            <div className="book-footer">
-              <button 
-                className="page-btn" 
-                onClick={handlePrev} 
-                disabled={currentPage === 0 || isFlipping}
-              >
-                ◀ 前のページ
-              </button>
-
-              <span className="page-num">
-                {currentPage + 1} / {totalPages}
-              </span>
-
-              <button 
-                className="page-btn" 
-                onClick={handleNext} 
-                disabled={currentPage === totalPages - 1 || isFlipping}
-              >
-                次のページ ▶
-              </button>
-            </div>
-
-            {/* 下の固定ページに落ちる動的な影 */}
-            {isFlipping && (
-              <div className={`under-page-shadow ${flipDirection === 'next' ? 'anim-next' : 'anim-prev'}`} />
-            )}
           </div>
         </div>
 
-        {/* 表裏一体の3Dめくりシート */}
+        {/* 3Dめくりシート（回転軸をノドの境目にジャスト配置） */}
         {isFlipping && (
           <div className={`flipping-sheet-3d ${flipDirection === 'next' ? 'anim-next' : 'anim-prev'}`}>
             <div className="paper-face paper-face-front">
