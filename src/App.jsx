@@ -439,26 +439,28 @@ export default function App() {
             {/* 🗺️ マップタブ */}
             <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
               
-              {/* 🚢 乗船中水しぶきエフェクト */}
+              {/* 🚢 乗船中水しぶきエフェクト ＆ 下船処理ボタン */}
               <WaterBusCruiseEffect
                 isActive={isCruising}
                 speed={currentSpeed}
-                onStopCruise={() => setIsCruising(false)}
+                onEndCruise={() => setIsCruising(false)} /* 👈 下船時に通常モードへ復帰 */
               />
 
-              {/* 🚢 水上バス乗船ボタン (右上に配置) */}
-              <button
-                onClick={() => setShowWaterBusQR(true)}
-                style={{
-                  position: 'absolute', top: '16px', right: '16px', zIndex: 80,
-                  background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff',
-                  border: 'none', padding: '10px 14px', borderRadius: '20px',
-                  fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'flex', alignItems: 'center', gap: '6px'
-                }}
-              >
-                🚢 水上バス乗船
-              </button>
+              {/* 🚢 水上バス乗船ボタン (乗船していない時のみ表示) */}
+              {!isCruising && (
+                <button
+                  onClick={() => setShowWaterBusQR(true)}
+                  style={{
+                    position: 'absolute', top: '16px', right: '16px', zIndex: 80,
+                    background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff',
+                    border: 'none', padding: '10px 14px', borderRadius: '20px',
+                    fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  🚢 水上バス乗船
+                </button>
+              )}
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
                 {/* Mapboxのコンテナは絶対に中身を空にしておく */}
