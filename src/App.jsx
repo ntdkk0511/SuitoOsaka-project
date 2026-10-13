@@ -262,6 +262,10 @@ export default function App() {
     });
 
     mapRef.current.on('load', () => {
+      // 🌫️ 霧の要素を Mapbox 内部のキャンバスコンテナ（地図とマーカーの間）へ直接割り込ませる
+      if (fogOverlayRef.current && mapRef.current.getCanvasContainer()) {
+        mapRef.current.getCanvasContainer().appendChild(fogOverlayRef.current);
+      }
       SPOTS_DATA.forEach(spot => {
         const el = document.createElement('div');
         const isCleared = clearedSpots.includes(spot.id);
@@ -457,7 +461,10 @@ export default function App() {
               </button>
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
+                {/* Mapboxのコンテナは絶対に中身を空にしておく */}
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
+  
+                {/* 霧は外側に並べる */}
                 <div ref={fogOverlayRef} className="map-fog-overlay" />
               </main>
 
