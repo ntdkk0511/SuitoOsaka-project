@@ -324,7 +324,7 @@ export default function App() {
       const isCleared = clearedSpots.includes(id);
       const isSelected = id === selectedSpotId;
       if (element) {
-        element.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
+        element.className = `map-native-marker mapboxgl-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
         const labelEl = element.querySelector('.marker-core-label');
         if (labelEl) labelEl.textContent = isCleared ? spot.name : '？？？';
       }
