@@ -3,7 +3,7 @@ export const SPOTS_DATA = [
     id: 'central-hall',
     name: '中央公会堂',
     englishName: 'Central Public Hall',
-    lngLat: [135.5036, 34.6932],
+    lngLat: [135.50403026, 34.69352882],
     desc: '大正時代の美しい建築。現地では過去の姿がARで蘇ります。',
     quiz: {
       q: '中央公会堂の建築資金を寄付した、当時の大阪の相場師は誰でしょう？',
@@ -15,7 +15,7 @@ export const SPOTS_DATA = [
     id: 'nakanishima-park',
     name: '中之島公園 (バラ園)',
     englishName: 'Nakanoshima Park',
-    lngLat: [135.5102, 34.6923],
+    lngLat: [135.5080964, 34.69230774],
     desc: '水辺に広がる大阪市内で最も古い公園。美しいバラと川の対比が見所です。',
     quiz: {
       q: '中之島公園が開園したのは、西暦何年でしょう？',
@@ -27,7 +27,7 @@ export const SPOTS_DATA = [
     id: 'osaka-castle-pier',
     name: '大阪城港 (水上バス乗り場)',
     englishName: 'Osaka Castle Pier',
-    lngLat: [135.5262, 34.6878],
+    lngLat: [135.5327933, 34.68971791],
     desc: 'アクアライナー（水上バス）の発着拠点。ここから水の回廊を大冒険できます！',
     quiz: {
       q: '水上バス「アクアライナー」が、低い橋をくげる際が行う特殊な変形はどれ？',
@@ -39,7 +39,7 @@ export const SPOTS_DATA = [
     id: 'oit-hirakata',
     name: '大阪工業大学 枚方キャンパス',
     englishName: 'OIT Hirakata Campus',
-    lngLat: [135.6985, 34.8237],
+    lngLat: [135.7050764, 34.84130318],
     desc: '最新の情報技術やAI・データサイエンスを学ぶ情報科学部が集まるキャンパス。',
     quiz: {
       q: '大阪工業大学枚方キャンパスに設置されている専門学部はどれ？',
@@ -51,7 +51,7 @@ export const SPOTS_DATA = [
     id: 'cosmos-kitayama',
     name: 'ディスカウントドラッグ コスモス北山店',
     englishName: 'Cosmos Kitayama',
-    lngLat: [135.6981, 34.8209],
+    lngLat: [135.70319963, 34.84109702],
     desc: 'キャンパスからすぐ近く、学生や地域住民の生活を支える大型ドラッグストア。',
     quiz: {
       q: 'ディスカウントドラッグコスモスの看板でお馴染みのシンボルカラーは何色？',
@@ -63,7 +63,7 @@ export const SPOTS_DATA = [
     id: 'oni-park',
     name: '王仁公園（おにこうえん）',
     englishName: 'Oni Park',
-    lngLat: [135.7075, 34.8245],
+    lngLat: [135.70689959, 34.81798706],
     desc: 'テニスコートやプール、広大な緑地を備えた枚方市東部の総合公園。',
     quiz: {
       q: '王仁公園の名前の由来となった「王仁（わに）」は、歴史上何をもたらしたとされる人物？',
@@ -75,7 +75,7 @@ export const SPOTS_DATA = [
     id: 'nagao-station',
     name: 'JR学研都市線 長尾駅',
     englishName: 'Nagao Station',
-    lngLat: [135.7028, 34.8272],
+    lngLat: [135.71338092, 34.82614819],
     desc: '枚方キャンパスへのアクセス拠点となる学研都市線の主要駅。',
     quiz: {
       q: 'JR長尾駅が属する「学研都市線」の正式名称は次のうちどれ？',
@@ -87,7 +87,7 @@ export const SPOTS_DATA = [
     id: 'kitayama-park',
     name: '北山公園',
     englishName: 'Kitayama Park',
-    lngLat: [135.6955, 34.8225],
+    lngLat: [135.70288823, 34.84491044],
     desc: '北山住宅地に隣接し、緑豊かで休憩や散歩にぴったりの憩いの公園。',
     quiz: {
       q: '枚方市が発祥・名物として推進している「枚方市のお花」は次のうちどれ？',

@@ -270,7 +270,14 @@ export default function App() {
         const el = document.createElement('div');
         const isCleared = clearedSpots.includes(spot.id);
         el.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'}`;
-        el.innerHTML = `<div class="marker-core-circle"><div class="marker-pulse-ring"></div></div><div class="marker-core-label">${isCleared ? spot.name : '？？？'}</div>`;
+  
+        // クリア状態に応じて画像のパスを切り替え
+        const iconSrc = isCleared ? '/images/spot-cleared.png' : '/images/spot-locked.png';
+
+        el.innerHTML = `
+        <img src="${iconSrc}" class="marker-icon-img" style="width: 36px; height: 36px; object-fit: contain; display: block; margin: 0 auto;" />
+        <div class="marker-core-label">${isCleared ? spot.name : '？？？'}</div>
+        `;
         
         el.addEventListener('click', (e) => { 
           e.stopPropagation(); 
@@ -295,16 +302,11 @@ export default function App() {
 
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
-      el.style.width = '16px';
-      el.style.height = '16px';
-      el.style.backgroundColor = '#00bfff';
-      el.style.border = '2px solid white';
-      el.style.borderRadius = '50%';
-      el.style.boxShadow = '0 0 12px rgba(0, 191, 255, 0.8)';
+      el.innerHTML = `<img src="/images/user-pin.png" style="width: 32px; height: 32px; object-fit: contain;" />`;
 
       userMarkerRef.current = new mapboxgl.Marker({ element: el })
-        .setLngLat(userLocation)
-        .addTo(mapRef.current);
+      .setLngLat(userLocation)
+      .addTo(mapRef.current);
     } else {
       userMarkerRef.current.setLngLat(userLocation);
     }
