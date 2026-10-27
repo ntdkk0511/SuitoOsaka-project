@@ -125,14 +125,14 @@ export default function App() {
     }
   }, [steps]);
 
-  // 🚶 軌跡フック
-  const { visitedLocations } = useVisitedLocations(userLocation);
+  // ✨変更点: isCruising を渡し、徒歩軌跡と水上バス軌跡の両方を受け取る
+  const { visitedLocations, cruisedLocations } = useVisitedLocations(userLocation, isCruising);
 
+  // ✨変更点: 'river-zone' の固定クリア処理を削除
   const fogRadiiRef = useRef({
     'central-hall': clearedSpots.includes('central-hall') ? 80 : 0,
     'nakanishima-park': clearedSpots.includes('nakanishima-park') ? 80 : 0,
-    'osaka-castle-pier': clearedSpots.includes('osaka-castle-pier') ? 80 : 0,
-    'river-zone': clearedSpots.includes('river-zone') ? 180 : 0
+    'osaka-castle-pier': clearedSpots.includes('osaka-castle-pier') ? 80 : 0
   });
 
   // 🌫️ 霧フック
@@ -141,11 +141,12 @@ export default function App() {
     fogOverlayRef,
     clearedSpots,
     visitedLocations,
+    cruisedLocations, // ✨追加
     userLocation,
     fogRadiiRef
   });
 
-  // 🚢 水上バス速度チェック & 川エリア解放
+  // 🚢 水上バス速度チェック
   useEffect(() => {
     if (!userLocation || !isCruising) return;
 
@@ -156,14 +157,8 @@ export default function App() {
       const speed = calculateSpeedKmH(prevLocationRef.current, userLocation, timeDiffSec);
       setCurrentSpeed(speed);
 
-      // 乗船中 ＋ 有効速度（6〜30km/h）の場合のみ川エリアの霧を晴らす
-      if (isValidWaterBusSpeed(speed)) {
-        if (!clearedSpots.includes('river-zone')) {
-          setClearedSpots((prev) => Array.from(new Set([...prev, 'river-zone'])));
-        }
-        fogRadiiRef.current['river-zone'] = 180;
-        updateFogPosition();
-      }
+      // ✨変更点: 川エリア(river-zone)の固定クリア処理を削除。
+      // 代わりに useVisitedLocations が自動で水上バスの軌跡(cruisedLocations)に記録し、軌跡に沿って川の霧が晴れます。
     }
 
     prevLocationRef.current = userLocation;
@@ -262,7 +257,6 @@ export default function App() {
     });
 
     mapRef.current.on('load', () => {
-      // 🌫️ 霧の要素を Mapbox 内部のキャンバスコンテナ（地図とマーカーの間）へ直接割り込ませる
       if (fogOverlayRef.current && mapRef.current.getCanvasContainer()) {
         mapRef.current.getCanvasContainer().appendChild(fogOverlayRef.current);
       }
@@ -271,7 +265,6 @@ export default function App() {
         const isCleared = clearedSpots.includes(spot.id);
         el.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'}`;
   
-        // クリア状態に応じて画像のパスを切り替え
         const iconSrc = isCleared ? '/images/spot-cleared.png' : '/images/spot-locked.png';
 
         el.innerHTML = `
@@ -362,9 +355,9 @@ export default function App() {
     requestAnimationFrame(step);
   };
 
-  // 🎯 クイズ回答（1日1回制限付き）
-  const handleAnswerSubmit = () => {
-    if (quizSelected === currentSpot.quiz.ans) {
+  // 🎯 クイズ回答（✨変更点: ボタンから受け取った index で即判定するように変更）
+  const handleAnswerSubmit = (selectedIdx) => {
+    if (selectedIdx === currentSpot.quiz.ans) {
       const canClaim = canClaimSpotPoints(currentSpot.id);
 
       if (canClaim) {
@@ -387,6 +380,11 @@ export default function App() {
       }, 1500);
     } else {
       setQuizFeedback('❌ 残念！もう一度考えてみよう。');
+      // 不正解の場合は2秒後に再度選べるようにリセット
+      setTimeout(() => {
+        setQuizSelected(null);
+        setQuizFeedback('');
+      }, 2000);
     }
   };
 
@@ -441,14 +439,12 @@ export default function App() {
             {/* 🗺️ マップタブ */}
             <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
               
-              {/* 🚢 乗船中水しぶきエフェクト ＆ 下船処理ボタン */}
               <WaterBusCruiseEffect
                 isActive={isCruising}
                 speed={currentSpeed}
-                onEndCruise={() => setIsCruising(false)} /* 👈 下船時に通常モードへ復帰 */
+                onEndCruise={() => setIsCruising(false)}
               />
 
-              {/* 🚢 水上バス乗船ボタン (乗船していない時のみ表示) */}
               {!isCruising && (
                 <button
                   onClick={() => setShowWaterBusQR(true)}
@@ -465,10 +461,7 @@ export default function App() {
               )}
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
-                {/* Mapboxのコンテナは絶対に中身を空にしておく */}
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
-  
-                {/* 霧は外側に並べる */}
                 <div ref={fogOverlayRef} className="map-fog-overlay" />
               </main>
 
@@ -563,14 +556,12 @@ export default function App() {
             onClose={() => setIsEncyclopediaOpen(false)} 
           />
 
-          {/* 🎟️ クーポン使用スワイプモーダル */}
           <CouponUseModal
             isOpen={!!selectedCoupon}
             onClose={() => setSelectedCoupon(null)}
             coupon={selectedCoupon}
           />
 
-          {/* 🚢 水上バスQRチェックインモーダル */}
           <WaterBusQRModal
             isOpen={showWaterBusQR}
             onClose={() => setShowWaterBusQR(false)}
