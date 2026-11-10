@@ -38,6 +38,12 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DEFAULT_CENTER = [135.5036, 34.6932];
 
+// ✨追加: 大阪市〜枚方市をカバーする表示領域制限（これより外へはスクロールできなくする）
+const OSAKA_HIRAKATA_BOUNDS = [
+  [135.35, 34.55], // 南西の座標 (大阪市住之江区・大阪湾周辺)
+  [135.78, 34.87]  // 北東の座標 (枚方市東部・京都府境周辺)
+];
+
 const COUPONS_DATA = [
   { id: 'cosmos-50', title: 'ドラッグストアコスモス 50円引き', price: 100 },
   { id: 'cafe-100', title: 'リバーサイドカフェ 100円OFF', price: 150 },
@@ -125,10 +131,8 @@ export default function App() {
     }
   }, [steps]);
 
-  // ✨変更点: isCruising を渡し、徒歩軌跡と水上バス軌跡の両方を受け取る
   const { visitedLocations, cruisedLocations } = useVisitedLocations(userLocation, isCruising);
 
-  // ✨変更点: 'river-zone' の固定クリア処理を削除
   const fogRadiiRef = useRef({
     'central-hall': clearedSpots.includes('central-hall') ? 80 : 0,
     'nakanishima-park': clearedSpots.includes('nakanishima-park') ? 80 : 0,
@@ -141,7 +145,7 @@ export default function App() {
     fogOverlayRef,
     clearedSpots,
     visitedLocations,
-    cruisedLocations, // ✨追加
+    cruisedLocations,
     userLocation,
     fogRadiiRef
   });
@@ -156,9 +160,6 @@ export default function App() {
     if (prevLocationRef.current && timeDiffSec > 2) {
       const speed = calculateSpeedKmH(prevLocationRef.current, userLocation, timeDiffSec);
       setCurrentSpeed(speed);
-
-      // ✨変更点: 川エリア(river-zone)の固定クリア処理を削除。
-      // 代わりに useVisitedLocations が自動で水上バスの軌跡(cruisedLocations)に記録し、軌跡に沿って川の霧が晴れます。
     }
 
     prevLocationRef.current = userLocation;
@@ -253,7 +254,10 @@ export default function App() {
       style: 'mapbox://styles/mapbox/streets-v12',
       center: DEFAULT_CENTER,
       zoom: 17,
-      pitch: 15
+      pitch: 15,
+      // ✨追加: ズームアウトの限界と、移動範囲の壁を設定し、処理落ちを完全防止
+      minZoom: 10.5,
+      maxBounds: OSAKA_HIRAKATA_BOUNDS
     });
 
     mapRef.current.on('load', () => {
@@ -355,7 +359,6 @@ export default function App() {
     requestAnimationFrame(step);
   };
 
-  // 🎯 クイズ回答（✨変更点: ボタンから受け取った index で即判定するように変更）
   const handleAnswerSubmit = (selectedIdx) => {
     if (selectedIdx === currentSpot.quiz.ans) {
       const canClaim = canClaimSpotPoints(currentSpot.id);
@@ -380,7 +383,6 @@ export default function App() {
       }, 1500);
     } else {
       setQuizFeedback('❌ 残念！もう一度考えてみよう。');
-      // 不正解の場合は2秒後に再度選べるようにリセット
       setTimeout(() => {
         setQuizSelected(null);
         setQuizFeedback('');
