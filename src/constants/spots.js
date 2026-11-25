@@ -197,7 +197,16 @@ const EDO_NAMES = {
 export const SPOTS_DATA = SPOTS_BASE_DATA.map((spot, index) => ({
   ...spot,
   edoName: EDO_NAMES[spot.id] || '—',
-  ukiyoeImage: `/images/ukiyoe/${spot.id}.svg`,
+  ukiyoeImage: `/images/ukiyoe/${({
+    'central-hall': 'central-hall.jpg',
+    'cosmos-kitayama': 'cosmos-kitayama.jpg',
+    'fujita-museum': 'fujita-museum.jpg',
+    'kitayama-park': 'kitayama-park.jpg',
+    'nakanishima-park': 'nakanishima-park.jpg',
+    'oit-hirakata': 'oit-hirakata.jpg',
+    'osaka-castle-pier': 'osaka-castle-pier.jpg',
+    zouheikyoku: 'zouheikyoku.jpg',
+  })[spot.id] || `${spot.id}.svg`}`,
   trivia: `${spot.name}は、大阪の水辺の歴史と人々の暮らしを今に伝える場所です。周辺の町並みや水運の記憶にも目を向けてみましょう。`,
   spotNumber: index + 1,
 }));

@@ -20,7 +20,7 @@ export default function MyPageView({ userName, setUserName, userScore, userPoint
     <h2 className="mp-title">マイページ</h2>
     <div className="mp-card">
       <div className="mp-label">プレイヤー名</div>
-      {isEditingName ? <div style={{display:'flex',gap:8,marginTop:8}}><input className="mp-input" value={tempName} onChange={e=>setTempName(e.target.value)} aria-label="ニックネーム"/><button className="mp-btn" onClick={()=>{if(tempName.trim()){setUserName(tempName.trim());setIsEditingName(false)}}}>保存</button></div> : <div className="mp-name-row"><span className="mp-name">{userName || 'プレイヤー'}</span><button className="mp-btn secondary" onClick={()=>{setTempName(userName||'');setIsEditingName(true)}}>編集</button></div>}
+      {isEditingName ? <div style={{display:'flex',gap:8,marginTop:8}}><input className="mp-input" style={{flex:1,minWidth:0}} value={tempName} onChange={e=>setTempName(e.target.value)} aria-label="ニックネーム"/><button className="mp-btn" style={{whiteSpace:'nowrap',flexShrink:0,padding:'10px 18px'}} onClick={()=>{if(tempName.trim()){setUserName(tempName.trim());setIsEditingName(false)}}}>保存</button></div> : <div className="mp-name-row"><span className="mp-name">{userName || 'プレイヤー'}</span><button className="mp-btn secondary" onClick={()=>{setTempName(userName||'');setIsEditingName(true)}}>編集</button></div>}
     </div>
     <div className="mp-stats">
       <div className="mp-stat"><span className="mp-label">総スコア</span><strong>{userScore}<small> pt</small></strong></div>
