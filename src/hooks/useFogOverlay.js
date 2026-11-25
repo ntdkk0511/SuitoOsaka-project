@@ -76,7 +76,8 @@ export function useFogOverlay({
     // 1. 画面全体を水都らしい淡い白霧で塗りつぶす
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = 'rgba(241, 248, 255, 0.80)';
+    ctx.fillStyle = 'rgba(173, 194, 218, 0.65)';
+    //241, 248, 255, 0.80
     ctx.fillRect(0, 0, width, height);
 
     // 表示領域の簡易カリング
@@ -135,13 +136,13 @@ export function useFogOverlay({
       const grad = ctx.createRadialGradient(
         pixelPos.x,
         pixelPos.y,
-        radiusPx * 0.2,
+        radiusPx * 0.45,
         pixelPos.x,
         pixelPos.y,
         radiusPx
       );
       grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
-      grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.85)');
+      grad.addColorStop(0.55, 'rgba(0, 0, 0, 1)');
       grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = grad;

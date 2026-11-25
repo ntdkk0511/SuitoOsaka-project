@@ -189,7 +189,7 @@ body {
 /* マップステージ */
 .map-stage-aquatic { position: absolute; inset: 0; z-index: 1; }
 .mapbox-container { width: 100%; height: 100%; position: absolute; inset: 0;}
-.map-fog-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: rgba(255, 255, 255, 0.45); backdrop-filter: grayscale(100%) brightness(1.02) blur(5px); -webkit-backdrop-filter: grayscale(100%) brightness(1.02) blur(5px); mask-size: cover; -webkit-mask-size: cover; }
+.map-fog-overlay { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: none/*rgba(255, 255, 255, 0.45)*/; backdrop-filter: none/*grayscale(100%) brightness(1.02) blur(5px)*/; -webkit-backdrop-filter: none/*grayscale(100%) brightness(1.02) blur(5px)*/; mask-size: cover; -webkit-mask-size: cover; }
 .mapboxgl-marker,.map-native-marker { z-index: 10 !important; }
 
 /* カスタムマーカー */
