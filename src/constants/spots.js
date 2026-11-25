@@ -179,6 +179,66 @@ const SPOTS_BASE_DATA = [
       ans: 0
     }
   },
+  {
+    id: 'dx-field',
+    name: 'DXフィールド',
+    englishName: 'DX Field',
+    lngLat: [135.705002, 34.840312],
+    desc: '行く機会がない',
+    quiz: {
+      q: '大阪市立東洋陶磁美術館に収蔵されている、中国・宋時代の国宝の茶碗はどれでしょう？',
+      choices: ['油滴天目茶碗', '曜変天目茶碗', '井戸茶碗', '黒楽茶碗'],
+      ans: 0
+    }
+  },
+  {
+    id: 'gym',
+    name: '体育館',
+    englishName: 'gym',
+    lngLat: [135.707470, 34.841615],
+    desc: '中之島公園内に位置し、安宅コレクョンをはじめとする世界最高峰の東洋陶磁器を収蔵する美術館。',
+    quiz: {
+      q: '大阪市立東洋陶磁美術館に収蔵されている、中国・宋時代の国宝の茶碗はどれでしょう？',
+      choices: ['油滴天目茶碗', '曜変天目茶碗', '井戸茶碗', '黒楽茶碗'],
+      ans: 0
+    }
+  },
+  {
+    id: 'soccer-field',
+    name: 'サッカーコート',
+    englishName: 'Soccer field',
+    lngLat: [135.706151, 34.842087],
+    desc: '大工大のサッカーコート',
+    quiz: {
+      q: '基礎スポーツ科学bの外科目は？',
+      choices: ['野球', 'サッカー', 'テニス', '卓球'],
+      ans: 1
+    }
+  },
+  {
+    id: 'sasatani-park',
+    name: '笹谷公園',
+    englishName: 'Sasatani Park',
+    lngLat: [135.708704, 34.841171],
+    desc: 'よく見かけるけど行かない',
+    quiz: {
+      q: '近くにある施設は？',
+      choices: ['警察署', '病院', '消防署', '交番'],
+      ans: 3
+    }
+  },
+  {
+    id: 'baseball-stadium',
+    name: '野球場',
+    englishName: 'Baseball Stadium',
+    lngLat: [135.704836, 34.843100],
+    desc: '野球部が活動している',
+    quiz: {
+      q: '大阪工業大学からプロ野球ドラフト会議で指名された人は？',
+      choices: ['岡田啓吾', '馬場拓海', '岡田光平', '石井康輝'],
+      ans: 2
+    }
+  },
 ];
 
 // Illustration paths gare kept as simple public paths so real artwork can be
