@@ -179,4 +179,4 @@ export const SPOTS_DATA = [
       ans: 0
     }
   },
-];n
+];

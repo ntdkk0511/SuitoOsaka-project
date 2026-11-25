@@ -462,6 +462,32 @@ export default function App() {
                 </button>
               )}
 
+              {/* 📍 現在地ボタン（水上バス乗船ボタンの下に配置） */}
+              <button
+                onClick={handleRecenter}
+                title="現在地へ移動"
+                style={{
+                  position: 'absolute',
+                  top: !isCruising ? '64px' : '16px',
+                  right: '16px',
+                  zIndex: 80,
+                  background: '#ffffff',
+                  color: userLocation ? '#0284c7' : '#64748b',
+                  border: '1px solid #e2e8f0',
+                  padding: '10px 14px',
+                  borderRadius: '20px',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                📍 現在地
+              </button>
+
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
                 <div ref={fogOverlayRef} className="map-fog-overlay" />
