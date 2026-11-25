@@ -85,7 +85,7 @@ export default function MyPageView({
         </div>
         <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
           <div style={{ fontSize: '11px', color: '#666' }}>本日の歩数</div>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#059669', marginTop: '4px' }}>
+          <div style={{ fontSize: '18px', fontWeight: '800', color: '#0284c7', marginTop: '4px' }}>
             {steps} <span style={{ fontSize: '10px', fontWeight: 'normal' }}>歩</span>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function MyPageView({
         </p>
 
         {isLinked ? (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px', borderRadius: '8px', color: '#166534', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
+          <div style={{ background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '12px', borderRadius: '8px', color: '#0369a1', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
             ✅ {linkedProvider === 'google.com' ? 'Google' : 'メールアドレス'} で連携済みです
           </div>
         ) : (

@@ -11,7 +11,7 @@ export default function BottomDock({
   return (
     <footer 
       className="integrated-bottom-dock"
-      style={{ bottom: '64px', position: 'fixed', left: 0, right: 0, zIndex: 30 }}
+      style={{ bottom: 'calc(78px + env(safe-area-inset-bottom, 0px))', position: 'fixed', left: 0, right: 0, zIndex: 30 }}
     >
       <div className="embedded-story-card">
         <div className="card-meta">
@@ -20,7 +20,7 @@ export default function BottomDock({
             {isCurrentCleared ? '🔓 解放済みエリア' : '🔒 未開拓エリア'}
           </span>
           {isNearSpot && !isCurrentCleared && (
-            <span className="badge-purple" style={{ background: '#00e676', color: '#fff' }}>
+            <span className="badge-purple" style={{ background: '#0ea5e9', color: '#fff' }}>
               📍 現地に到着！
             </span>
           )}

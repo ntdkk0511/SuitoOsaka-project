@@ -10,7 +10,7 @@ import {
   EmailAuthProvider, 
   linkWithCredential 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, arrayUnion, deleteDoc } from 'firebase/firestore';
 
 import { SPOTS_DATA } from './constants/spots';
 import { isWithinRadius } from './utils/geo';
@@ -33,19 +33,21 @@ import { EncyclopediaModal } from './components/EncyclopediaModal';
 import CouponUseModal from './components/CouponUseModal';
 import WaterBusCruiseEffect from './components/WaterBusCruiseEffect';
 import WaterBusQRModal from './components/WaterBusQRModal';
+import CardPackModal from './components/CardPackModal';
+import BuddyShakeModal from './components/BuddyShakeModal';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DEFAULT_CENTER = [135.5036, 34.6932];
 
-// ✨追加: 大阪市〜枚方市をカバーする表示領域制限（これより外へはスクロールできなくする）
+// 大阪市から枚方市までをカバーする表示領域を設定
 const OSAKA_HIRAKATA_BOUNDS = [
-  [135.35, 34.55], // 南西の座標 (大阪市住之江区・大阪湾周辺)
-  [135.78, 34.87]  // 北東の座標 (枚方市東部・京都府境周辺)
+  [135.35, 34.55], // 大阪市南西部
+  [135.78, 34.87]  // 枚方市・京都市東部
 ];
 
 const COUPONS_DATA = [
-  { id: 'cosmos-50', title: 'ドラッグストアコスモス 50円引き', price: 100 },
+  { id: 'cosmos-50', title: 'ドラッグストア コスモス 50円引き', price: 100 },
   { id: 'cafe-100', title: 'リバーサイドカフェ 100円OFF', price: 150 },
 ];
 
@@ -59,33 +61,41 @@ export default function App() {
   const hasCenteredOnUserRef = useRef(false);
   const isFirstRenderRef = useRef(true);
 
-  // 📍 GPS現在地を取得
+  // GPSで現在地を取得
   const { location: userLocation } = useGeolocation();
 
-  // 🚶 歩数計測フック
+  // 歩数を計測
   const { steps } = useStepCounter(userLocation);
 
   const prevProcessedStepsRef = useRef(
     parseInt(localStorage.getItem('tw_processed_steps') || '0', 10)
   );
 
-  // セーブデータ
+  // 保存データを読み込み
   const [score, setScore] = useState(() => parseInt(localStorage.getItem('tw_score') || '420', 10));
   const [clearedSpots, setClearedSpots] = useState(() => JSON.parse(localStorage.getItem('tw_cleared_spots') || '["central-hall"]'));
-  const [nickname, setNickname] = useState(() => localStorage.getItem('tw_nickname') || `水先案内人_${Math.floor(1000 + Math.random() * 9000)}`);
+  const [obtainedCards, setObtainedCards] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem('tw_obtained_cards') || '{}');
+    const legacyCleared = JSON.parse(localStorage.getItem('tw_cleared_spots') || '["central-hall"]');
+    const today = new Date();
+    const date = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+    legacyCleared.forEach(id => { if (!saved[id]) saved[id] = { obtainedAt: date, isBuddyClear: false }; });
+    return saved;
+  });
+  const [nickname, setNickname] = useState(() => localStorage.getItem('tw_nickname') || `水都冒険者_${Math.floor(1000 + Math.random() * 9000)}`);
   const [userPoints, setUserPoints] = useState(120);
 
-  // 🚢 水上バス状態
+  // 水上バスの状態
   const [isCruising, setIsCruising] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [showWaterBusQR, setShowWaterBusQR] = useState(false);
   const prevLocationRef = useRef(null);
   const prevTimeRef = useRef(Date.now());
 
-  // タブ状態管理
+  // タブの状態
   const [activeTab, setActiveTab] = useState('map');
 
-  // UI状態
+  // UI迥ｶ諷・
   const [showSplash, setShowSplash] = useState(true);
   const [showLiquidLoader, setShowLiquidLoader] = useState(false);
   const [waterProgress, setWaterProgress] = useState(0);
@@ -93,6 +103,9 @@ export default function App() {
   const [selectedSpotId, setSelectedSpotId] = useState('central-hall');
   const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [packSpotId, setPackSpotId] = useState(null);
+  const [packBuddyClear, setPackBuddyClear] = useState(false);
+  const [showCardPack, setShowCardPack] = useState(false);
   const [showAR, setShowAR] = useState(false);
   const [isEncyclopediaOpen, setIsEncyclopediaOpen] = useState(false);
   const [quizSelected, setQuizSelected] = useState(null);
@@ -100,12 +113,15 @@ export default function App() {
   const [isFlash, setIsFlash] = useState(false);
   const [showARSuccess, setShowARSuccess] = useState(false);
 
-  // 🎫 クーポン選択モーダル状態
+  // クーポン選択モーダルの状態
   const [selectedCoupon, setSelectedCoupon] = useState(null);
 
   // Firebase
   const [user, setUser] = useState(null);
   const [ranking, setRanking] = useState([]);
+  const [showBuddyModal, setShowBuddyModal] = useState(false);
+  const [buddy, setBuddy] = useState(null);
+  const [buddyTrail, setBuddyTrail] = useState([]);
 
   const isAppLoading = showSplash || showLiquidLoader;
 
@@ -113,10 +129,12 @@ export default function App() {
     setActiveTab(tabId);
     if (tabId === 'encyclopedia') {
       setIsEncyclopediaOpen(true);
+    } else {
+      setIsEncyclopediaOpen(false);
     }
   };
 
-  // 歩数ポイント変換
+  // 歩数をポイントに換算
   useEffect(() => {
     const STEP_PER_POINT = 10;
     const currentDiff = steps - prevProcessedStepsRef.current;
@@ -139,18 +157,20 @@ export default function App() {
     'osaka-castle-pier': clearedSpots.includes('osaka-castle-pier') ? 80 : 0
   });
 
-  // 🌫️ 霧フック
+  // 霧の表示を更新
+  const sharedTrail = [...new Map([...visitedLocations, ...buddyTrail].map(point => [`${point[0]}:${point[1]}`, point])).values()];
   const { updateFogPosition } = useFogOverlay({
     mapRef,
     fogOverlayRef,
     clearedSpots,
-    visitedLocations,
+    visitedLocations: sharedTrail,
     cruisedLocations,
     userLocation,
-    fogRadiiRef
+    fogRadiiRef,
+    buddyActive: Boolean(buddy)
   });
 
-  // 🚢 水上バス速度チェック
+  // 水上バスの速度を確認
   useEffect(() => {
     if (!userLocation || !isCruising) return;
 
@@ -187,6 +207,7 @@ export default function App() {
 
   useEffect(() => localStorage.setItem('tw_score', score.toString()), [score]);
   useEffect(() => localStorage.setItem('tw_cleared_spots', JSON.stringify(clearedSpots)), [clearedSpots]);
+  useEffect(() => localStorage.setItem('tw_obtained_cards', JSON.stringify(obtainedCards)), [obtainedCards]);
   useEffect(() => localStorage.setItem('tw_nickname', nickname), [nickname]);
 
   useEffect(() => {
@@ -196,6 +217,26 @@ export default function App() {
     }, 2200);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!buddy?.roomId) { setBuddyTrail([]); return undefined; }
+    const roomRef = doc(db, 'buddies', buddy.roomId);
+    const unsubscribe = onSnapshot(roomRef, snapshot => {
+      if (!snapshot.exists()) { setBuddy(null); setBuddyTrail([]); return; }
+      const data = snapshot.data();
+      const peerId = data.participants?.find(id => id !== user?.uid);
+      const peer = peerId && data.members?.[peerId];
+      if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, roomId: buddy.roomId } : current);
+      setBuddyTrail(Array.isArray(data.visitedLocations) ? data.visitedLocations : []);
+    });
+    return unsubscribe;
+  }, [buddy?.roomId, user?.uid]);
+
+  useEffect(() => {
+    if (!buddy?.roomId || !user?.uid || !visitedLocations.length) return;
+    setDoc(doc(db, 'buddies', buddy.roomId), { visitedLocations: arrayUnion(...visitedLocations), updatedAt: Date.now() }, { merge: true })
+      .catch(error => console.error('Buddy trail sync failed', error));
+  }, [buddy?.roomId, user?.uid, visitedLocations]);
 
   useEffect(() => {
     if (!showLiquidLoader) return;
@@ -225,6 +266,7 @@ export default function App() {
           const data = userDoc.data();
           if (data.score > score) setScore(data.score);
           if (data.clearedSpots && data.clearedSpots.length > clearedSpots.length) setClearedSpots(data.clearedSpots);
+          if (data.obtainedCards) setObtainedCards(previous => ({ ...previous, ...data.obtainedCards }));
           if (data.nickname) setNickname(data.nickname);
         } else {
           await setDoc(userDocRef, { uid: currentUser.uid, nickname, score, clearedSpots, lastUpdated: new Date() });
@@ -242,9 +284,9 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
-      setDoc(doc(db, "users", user.uid), { nickname, score, clearedSpots, lastUpdated: new Date() }, { merge: true });
+      setDoc(doc(db, "users", user.uid), { nickname, score, clearedSpots, obtainedCards, lastUpdated: new Date() }, { merge: true });
     }
-  }, [score, clearedSpots, nickname, user]);
+  }, [score, clearedSpots, obtainedCards, nickname, user]);
 
   useEffect(() => {
     if (isAppLoading || mapRef.current || !mapContainerRef.current) return;
@@ -255,7 +297,7 @@ export default function App() {
       center: DEFAULT_CENTER,
       zoom: 17,
       pitch: 15,
-      // ✨追加: ズームアウトの限界と、移動範囲の壁を設定し、処理落ちを完全防止
+      // ズーム範囲と移動範囲を設定し、地図を表示領域内に保つ
       minZoom: 10.5,
       maxBounds: OSAKA_HIRAKATA_BOUNDS
     });
@@ -273,7 +315,7 @@ export default function App() {
 
         el.innerHTML = `
         <img src="${iconSrc}" class="marker-icon-img" style="width: 36px; height: 36px; object-fit: contain; display: block; margin: 0 auto;" />
-        <div class="marker-core-label">${isCleared ? spot.name : '？？？'}</div>
+        <div class="marker-core-label">${isCleared ? spot.name : '???'}</div>
         `;
         
         el.addEventListener('click', (e) => { 
@@ -325,7 +367,7 @@ export default function App() {
       if (element) {
         element.className = `map-native-marker mapboxgl-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
         const labelEl = element.querySelector('.marker-core-label');
-        if (labelEl) labelEl.textContent = isCleared ? spot.name : '？？？';
+        if (labelEl) labelEl.textContent = isCleared ? spot.name : '???';
       }
     });
 
@@ -365,14 +407,22 @@ export default function App() {
 
       if (canClaim) {
         recordSpotClaim(currentSpot.id);
-        setScore(prev => prev + 100);
-        setUserPoints(prev => prev + 50);
-        setQuizFeedback('✨ 正解！エリアの霧が晴れ、100pt獲得しました！');
+        const reward = buddy ? 150 : 100;
+        setScore(prev => prev + reward);
+        setUserPoints(prev => prev + (buddy ? 75 : 50));
+        setQuizFeedback('正解！エリアの霧が晴れました。100pt獲得！');
       } else {
-        setQuizFeedback('✨ 正解！(※本日のポイントはすでに獲得済みです)');
+        setQuizFeedback('正解！本日のポイントは獲得済みです。');
       }
 
       setTimeout(() => {
+        const spotId = currentSpot.id;
+        const today = new Date();
+        const obtainedAt = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+        const isBuddyClear = Boolean(buddy);
+        setObtainedCards(previous => ({ ...previous, [spotId]: { ...(previous[spotId] || {}), obtainedAt: previous[spotId]?.obtainedAt || obtainedAt, isBuddyClear: Boolean(previous[spotId]?.isBuddyClear || isBuddyClear) } }));
+        setPackSpotId(spotId);
+        setPackBuddyClear(isBuddyClear);
         fogRadiiRef.current[currentSpot.id] = 0;
         if (mapRef.current) mapRef.current.flyTo({ center: currentSpot.lngLat, zoom: 18, pitch: 35 });
         animateFogReveal(currentSpot.id);
@@ -380,14 +430,30 @@ export default function App() {
         setShowQuiz(false);
         setQuizSelected(null);
         setQuizFeedback('');
+        setIsEncyclopediaOpen(true);
+        setShowCardPack(true);
       }, 1500);
     } else {
-      setQuizFeedback('❌ 残念！もう一度考えてみよう。');
+      setQuizFeedback('不正解。もう一度考えてみましょう。');
       setTimeout(() => {
         setQuizSelected(null);
         setQuizFeedback('');
       }, 2000);
     }
+  };
+
+  const handleStartBuddy = async () => {
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      try { if (await DeviceMotionEvent.requestPermission() !== 'granted') return; }
+      catch (error) { console.error('Motion permission was not granted', error); return; }
+    }
+    setShowBuddyModal(true);
+  };
+  const handleBuddyPaired = peer => { setBuddy(peer); setShowBuddyModal(false); };
+  const handleLeaveBuddy = async () => {
+    const roomId = buddy?.roomId;
+    setBuddy(null);
+    if (roomId) await deleteDoc(doc(db, 'buddies', roomId)).catch(error => console.error('Buddy room cleanup failed', error));
   };
 
   const handleARShutter = () => {
@@ -397,27 +463,27 @@ export default function App() {
 
   const handleLinkGoogle = async () => {
     try {
-      if (!auth.currentUser) return alert("ログイン状態が確認できません。");
+      if (!auth.currentUser) return alert('ログイン状態を確認できません。');
       await linkWithPopup(auth.currentUser, googleProvider);
-      alert("🎉 Googleアカウントとの連携に成功しました！");
+      alert('Googleアカウントとの連携に成功しました。');
     } catch (error) {
-      alert("連携エラー: " + error.message);
+      alert('連携エラー: ' + error.message);
     }
   };
 
   const handleLinkEmail = async (email, password) => {
     try {
-      if (!auth.currentUser) return alert("ログイン状態が確認できません。");
+      if (!auth.currentUser) return alert('ログイン状態を確認できません。');
       const credential = EmailAuthProvider.credential(email, password);
       await linkWithCredential(auth.currentUser, credential);
-      alert("🎉 メールアドレスでのアカウント連携に成功しました！");
+      alert('メールアドレスでのアカウント連携に成功しました。');
     } catch (error) {
       if (error.code === 'auth/email-already-in-use') {
-        alert("このメールアドレスは既に他のアカウントで使用されています。");
+        alert('このメールアドレスは既に別のアカウントで使用されています。');
       } else if (error.code === 'auth/weak-password') {
-        alert("パスワードは6文字以上で入力してください。");
+        alert('パスワードは6文字以上で入力してください。');
       } else {
-        alert("連携エラー: " + error.message);
+        alert('連携エラー: ' + error.message);
       }
     }
   };
@@ -429,16 +495,16 @@ export default function App() {
       <LiquidLoader
         show={showLiquidLoader}
         progress={waterProgress}
-        message="水の都マップを読み込んでいます..."
+        message="水都のマップを読み込んでいます..."
       />
 
       {!isAppLoading && (
         <>
-          <Header userScore={score} userName={nickname} />
+          <Header userScore={score} userName={nickname} buddyName={buddy?.nickname} onLeaveBuddy={handleLeaveBuddy} />
 
           <div style={{ position: 'absolute', top: '48px', bottom: '82px', left: 0, right: 0, overflowY: 'auto' }}>
             
-            {/* 🗺️ マップタブ */}
+            {/* マップタブ */}
             <div style={{ width: '100%', height: '100%', position: 'relative', display: activeTab === 'map' ? 'block' : 'none' }}>
               
               <WaterBusCruiseEffect
@@ -458,9 +524,10 @@ export default function App() {
                     boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'flex', alignItems: 'center', gap: '6px'
                   }}
                 >
-                  🚢 水上バス乗船
+                  水上バスに乗る
                 </button>
               )}
+              {!buddy && <button onClick={handleStartBuddy} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 80, background: 'linear-gradient(135deg,#0e7490,#06b6d4)', color: '#fff', border: 0, padding: '10px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 4px 12px #0891b255' }}>仲間と合流</button>}
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
@@ -479,23 +546,10 @@ export default function App() {
               )}
             </div>
 
-            {/* 📖 図鑑タブ */}
-            {activeTab === 'encyclopedia' && (
-              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>📖 スポット図鑑</h2>
-                <button 
-                  onClick={() => setIsEncyclopediaOpen(true)}
-                  style={{ width: '100%', padding: '12px', background: '#3b200b', color: '#fef3c7', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', marginBottom: '16px' }}
-                >
-                  📘 3D図鑑を開く
-                </button>
-              </div>
-            )}
-
-            {/* 🎁 特典・クーポンタブ */}
+            {/* 特典・クーポンタブ */}
             {activeTab === 'rewards' && (
               <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🎁 特典・クーポン</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>特典・クーポン</h2>
                 <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
                   <p style={{ fontSize: '12px', color: '#b45309', margin: 0, fontWeight: '500' }}>現在の所持ポイント</p>
                   <p style={{ fontSize: '28px', fontWeight: '800', color: '#78350f', margin: '4px 0 0 0' }}>{userPoints} <span style={{ fontSize: '14px', fontWeight: 'normal' }}>pt</span></p>
@@ -521,10 +575,10 @@ export default function App() {
               </div>
             )}
 
-            {/* 🏆 ランキングタブ */}
+            {/* ランキングタブ */}
             {activeTab === 'ranking' && (
               <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>🏆 スコアランキング</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>スコアランキング</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {ranking.map((item, index) => (
                     <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
@@ -536,7 +590,7 @@ export default function App() {
               </div>
             )}
 
-            {/* 👤 マイページタブ */}
+            {/* マイページタブ */}
             {activeTab === 'mypage' && (
               <MyPageView
                 userName={nickname}
@@ -555,8 +609,18 @@ export default function App() {
 
           <EncyclopediaModal 
             isOpen={isEncyclopediaOpen} 
-            onClose={() => setIsEncyclopediaOpen(false)} 
+            onClose={() => { setIsEncyclopediaOpen(false); setActiveTab('map'); }} 
+            obtainedCards={obtainedCards}
           />
+
+          {showCardPack && packSpotId && (
+            <CardPackModal
+              spot={SPOTS_DATA.find(spot => spot.id === packSpotId) || SPOTS_DATA[0]}
+              isBuddyClear={packBuddyClear}
+              onComplete={() => setShowCardPack(false)}
+              onClose={() => setShowCardPack(false)}
+            />
+          )}
 
           <CouponUseModal
             isOpen={!!selectedCoupon}
@@ -569,6 +633,8 @@ export default function App() {
             onClose={() => setShowWaterBusQR(false)}
             onStartCruise={() => setIsCruising(true)}
           />
+
+          <BuddyShakeModal isOpen={showBuddyModal} uid={user?.uid} nickname={nickname} location={userLocation} onClose={() => setShowBuddyModal(false)} onPaired={handleBuddyPaired} />
 
           {showQuiz && (
             <QuizModal

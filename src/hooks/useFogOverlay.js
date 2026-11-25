@@ -22,7 +22,8 @@ export function useFogOverlay({
   visitedLocations,
   cruisedLocations,
   userLocation,
-  fogRadiiRef
+  fogRadiiRef,
+  buddyActive = false
 }) {
   const updateFogPosition = useCallback(() => {
     if (!mapRef.current || !fogOverlayRef.current) return;
@@ -60,7 +61,7 @@ export function useFogOverlay({
 
     const walkingPoints = (visitedLocations || []).map(lngLat => ({
       lngLat,
-      radiusMeters: 25 
+      radiusMeters: buddyActive ? 50 : 25
     }));
 
     const cruisingPoints = (cruisedLocations || []).map(lngLat => ({
@@ -68,7 +69,7 @@ export function useFogOverlay({
       radiusMeters: 50 
     }));
 
-    const currentLocPoint = userLocation ? [{ lngLat: userLocation, radiusMeters: 25 }] : [];
+    const currentLocPoint = userLocation ? [{ lngLat: userLocation, radiusMeters: buddyActive ? 50 : 25 }] : [];
 
     // 全ポイントから画面内のものだけを抽出（処理を劇的に軽くする）
     const allRevealPoints = [...clearedSpotsData, ...walkingPoints, ...cruisingPoints, ...currentLocPoint]
@@ -117,7 +118,7 @@ export function useFogOverlay({
     overlay.style.webkitMaskComposite = 'source-over';
     overlay.style.maskComposite = 'intersect';
     
-  }, [clearedSpots, visitedLocations, cruisedLocations, userLocation, fogRadiiRef]);
+  }, [clearedSpots, visitedLocations, cruisedLocations, userLocation, fogRadiiRef, buddyActive]);
 
   useEffect(() => {
     if (!mapRef.current) return;
