@@ -1,200 +1,40 @@
 import React, { useState } from 'react';
 
-export default function MyPageView({
-  userName,
-  setUserName,
-  userScore,
-  userPoints,
-  steps,
-  onGoogleLogin,
-  onEmailLogin,
-  user
-}) {
+const styles = `
+.mypage{max-width:520px;margin:0 auto;padding:20px 16px 30px;display:flex;flex-direction:column;gap:16px;color:#0c4a6e}.mypage .mp-title{letter-spacing:.02em}.mypage .mp-card{background:linear-gradient(145deg,rgba(255,255,255,.78),rgba(240,249,255,.58));border:1px solid rgba(255,255,255,.92);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 12px 30px rgba(3,105,161,.12),inset 0 1px 0 rgba(255,255,255,.95);transition:box-shadow .2s,transform .2s}.mypage .mp-card:hover{box-shadow:0 16px 34px rgba(3,105,161,.16),inset 0 1px 0 #fff}.mypage .mp-stat{background:linear-gradient(145deg,rgba(255,255,255,.84),rgba(224,242,254,.65));border-color:rgba(255,255,255,.95);backdrop-filter:blur(14px);box-shadow:0 7px 18px rgba(3,105,161,.08),inset 0 1px 0 #fff}.mypage .mp-status{background:linear-gradient(130deg,rgba(224,242,254,.95),rgba(186,230,253,.7));box-shadow:inset 0 1px 0 #fff}.mypage .mp-btn{background:linear-gradient(135deg,#0284c7,#0ea5e9)}.mypage .mp-btn.secondary{background:rgba(224,242,254,.88);border:1px solid rgba(125,211,252,.72)}.mypage .mp-input{background:rgba(255,255,255,.88);border-color:rgba(125,211,252,.75)}.mypage .mp-form{background:rgba(240,249,255,.72);backdrop-filter:blur(14px)}
+.mypage *{box-sizing:border-box}.mp-title{margin:0;color:#075985;font-size:22px}.mp-card{padding:18px;border:1px solid #bae6fd;border-radius:20px;background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(240,249,255,.94));box-shadow:0 10px 28px #0369a112}
+.mp-label{font-size:12px;font-weight:700;color:#64748b}.mp-name-row{display:flex;align-items:center;justify-content:space-between;gap:10px}.mp-name{font-size:20px;font-weight:800;color:#0c4a6e}.mp-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.mp-stat{padding:13px 7px;border:1px solid #dbeafe;border-radius:15px;background:linear-gradient(145deg,#fff,#f0f9ff);text-align:center}.mp-stat strong{display:block;margin-top:6px;color:#0284c7;font-size:18px}.mp-stat small{font-size:10px;color:#64748b}.mp-btn{border:0;border-radius:12px;padding:10px 14px;background:#0284c7;color:#fff;font-weight:700;cursor:pointer;transition:transform .18s,background .18s,box-shadow .18s;box-shadow:0 4px 12px #0284c733}.mp-btn:hover{background:#0369a1;transform:translateY(-1px)}.mp-btn:active{transform:scale(.97)}.mp-btn.secondary{background:#e0f2fe;color:#0369a1;box-shadow:none}.mp-input{width:100%;padding:11px 12px;margin-top:5px;border:1px solid #cbd5e1;border-radius:12px;background:#fff;font-size:14px;outline:none;transition:border-color .18s,box-shadow .18s}.mp-input:focus{border-color:#0ea5e9;box-shadow:0 0 0 4px #0ea5e933}.mp-form{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:15px;background:#f0f9ff;border:1px solid #dbeafe}.mp-status{padding:13px;border-radius:13px;background:#e0f2fe;border:1px solid #7dd3fc;color:#0369a1;font-size:13px;font-weight:700}.mp-muted{margin:0 0 14px;color:#64748b;font-size:13px;line-height:1.65}
+`;
+
+export default function MyPageView({ userName, setUserName, userScore, userPoints, steps, onGoogleLogin, onEmailLogin, user }) {
   const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(userName);
+  const [tempName, setTempName] = useState(userName || '');
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const isLinked = user && !user.isAnonymous;
   const linkedProvider = user?.providerData?.[0]?.providerId;
+  const handleSubmitEmail = e => { e.preventDefault(); if (email && password) onEmailLogin(email, password); };
 
-  const handleSaveName = () => {
-    if (tempName.trim()) {
-      setUserName(tempName.trim());
-      setIsEditingName(false);
-    }
-  };
-
-  const handleSubmitEmail = (e) => {
-    e.preventDefault();
-    if (!email || !password) return alert("メールアドレスとパスワードを入力してください。");
-    onEmailLogin(email, password);
-  };
-
-  return (
-    <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', margin: 0, color: '#111' }}>
-        👤 マイページ
-      </h2>
-
-      {/* 👤 1. ユーザープロフィール */}
-      <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '16px' }}>
-        <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>プレイヤー名</div>
-        {isEditingName ? (
-          <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-            <input
-              type="text"
-              value={tempName}
-              onChange={(e) => setTempName(e.target.value)}
-              style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
-            />
-            <button
-              onClick={handleSaveName}
-              style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
-            >
-              保存
-            </button>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '16px', fontWeight: 'bold', color: '#111' }}>{userName}</span>
-            <button
-              onClick={() => { setTempName(userName); setIsEditingName(true); }}
-              style={{ background: '#f3f4f6', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', color: '#4b5563', cursor: 'pointer' }}
-            >
-              編集
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* 📊 2. スコア・ポイント・歩数表示 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#666' }}>現在のスコア</div>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
-            {userScore} <span style={{ fontSize: '10px', fontWeight: 'normal' }}>pt</span>
-          </div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#666' }}>所持ポイント</div>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#d97706', marginTop: '4px' }}>
-            {userPoints} <span style={{ fontSize: '10px', fontWeight: 'normal' }}>pt</span>
-          </div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#666' }}>本日の歩数</div>
-          <div style={{ fontSize: '18px', fontWeight: '800', color: '#0284c7', marginTop: '4px' }}>
-            {steps} <span style={{ fontSize: '10px', fontWeight: 'normal' }}>歩</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 🔐 3. アカウント保存・連携 */}
-      <div style={{ background: '#fff', border: '1px solid #eee', borderRadius: '12px', padding: '16px' }}>
-        <h3 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#333', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          🔐 アカウント保存・連携
-        </h3>
-        <p style={{ fontSize: '12px', color: '#666', margin: '0 0 16px 0', lineHeight: '1.5' }}>
-          アカウントを連携すると、機種変更時や他端末でも現在のプレイデータを引き継ぐことができます。
-        </p>
-
-        {isLinked ? (
-          <div style={{ background: '#e0f2fe', border: '1px solid #7dd3fc', padding: '12px', borderRadius: '8px', color: '#0369a1', fontSize: '13px', fontWeight: 'bold', textAlign: 'center' }}>
-            ✅ {linkedProvider === 'google.com' ? 'Google' : 'メールアドレス'} で連携済みです
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={onGoogleLogin}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '8px',
-                border: '1px solid #ccc',
-                background: '#fff',
-                fontSize: '13px',
-                fontWeight: 'bold',
-                color: '#333',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              🌐 Googleアカウントで連携する
-            </button>
-
-            <button
-              onClick={() => setShowEmailForm(!showEmailForm)}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '8px',
-                border: '1px solid #2563eb',
-                background: '#eff6ff',
-                fontSize: '13px',
-                fontWeight: 'bold',
-                color: '#2563eb',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
-              }}
-            >
-              ✉️ メールアドレスでアカウント作成・連携
-            </button>
-
-            {showEmailForm && (
-              <form onSubmit={handleSubmitEmail} style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '8px', background: '#f9fafb', padding: '12px', borderRadius: '8px', border: '1px solid #eee' }}>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#666', fontWeight: 'bold' }}>メールアドレス</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="example@email.com"
-                    required
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', marginTop: '2px', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ fontSize: '11px', color: '#666', fontWeight: 'bold' }}>パスワード（6文字以上）</label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    minLength={6}
-                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '13px', marginTop: '2px', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#2563eb',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    marginTop: '4px'
-                  }}
-                >
-                  登録してデータを保護する
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-      </div>
+  return <><style>{styles}</style><section className="mypage">
+    <h2 className="mp-title">マイページ</h2>
+    <div className="mp-card">
+      <div className="mp-label">プレイヤー名</div>
+      {isEditingName ? <div style={{display:'flex',gap:8,marginTop:8}}><input className="mp-input" style={{flex:1,minWidth:0}} value={tempName} onChange={e=>setTempName(e.target.value)} aria-label="ニックネーム"/><button className="mp-btn" style={{whiteSpace:'nowrap',flexShrink:0,padding:'10px 18px'}} onClick={()=>{if(tempName.trim()){setUserName(tempName.trim());setIsEditingName(false)}}}>保存</button></div> : <div className="mp-name-row"><span className="mp-name">{userName || 'プレイヤー'}</span><button className="mp-btn secondary" onClick={()=>{setTempName(userName||'');setIsEditingName(true)}}>編集</button></div>}
     </div>
-  );
+    <div className="mp-stats">
+      <div className="mp-stat"><span className="mp-label">総スコア</span><strong>{userScore}<small> pt</small></strong></div>
+      <div className="mp-stat"><span className="mp-label">保有ポイント</span><strong>{userPoints}<small> pt</small></strong></div>
+      <div className="mp-stat"><span className="mp-label">今日の歩数</span><strong>{steps}<small> 歩</small></strong></div>
+    </div>
+    <div className="mp-card">
+      <h3 style={{margin:'0 0 8px',fontSize:17,color:'#075985'}}>アカウント連携</h3>
+      <p className="mp-muted">アカウントを連携すると、機種変更後もプレイデータを引き継げます。</p>
+      {isLinked ? <div className="mp-status">✓ {linkedProvider === 'google.com' ? 'Google' : 'メールアドレス'}で連携済み</div> : <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        <button className="mp-btn" onClick={onGoogleLogin}>Googleアカウントで連携</button>
+        <button className="mp-btn secondary" onClick={()=>setShowEmailForm(v=>!v)}>{showEmailForm?'メール登録を閉じる':'メールアドレスで登録・連携'}</button>
+        {showEmailForm&&<form className="mp-form" onSubmit={handleSubmitEmail}><label className="mp-label">メールアドレス<input className="mp-input" type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@email.com" required/></label><label className="mp-label">パスワード（6文字以上）<input className="mp-input" type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={6} required/></label><button className="mp-btn" type="submit">登録してデータを保存</button></form>}
+      </div>}
+    </div>
+  </section></>;
 }

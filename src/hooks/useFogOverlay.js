@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { SPOTS_DATA } from '../constants/spots';
 
 const getPixelRadiusFromMeters = (map, lngLat, meters) => {
@@ -11,7 +11,7 @@ const getPixelRadiusFromMeters = (map, lngLat, meters) => {
   const dx = edgePixel.x - centerPixel.x;
   const dy = edgePixel.y - centerPixel.y;
   const radius = Math.sqrt(dx * dx + dy * dy);
-  
+
   return isNaN(radius) ? 0 : radius;
 };
 
@@ -25,31 +25,73 @@ export function useFogOverlay({
   fogRadiiRef,
   buddyActive = false
 }) {
+  const canvasRef = useRef(null);
+
   const updateFogPosition = useCallback(() => {
     if (!mapRef.current || !fogOverlayRef.current) return;
     const map = mapRef.current;
-    
-    // マップの現在の表示領域（バウンディングボックス）を取得
-    const bounds = map.getBounds();
-    // 少し広めのマージンを取る（画面端で霧が切れるのを防ぐため）
-    const latMargin = (bounds.getNorth() - bounds.getSouth()) * 0.2;
-    const lngMargin = (bounds.getEast() - bounds.getWest()) * 0.2;
-    const paddedBounds = {
-      north: bounds.getNorth() + latMargin,
-      south: bounds.getSouth() - latMargin,
-      east: bounds.getEast() + lngMargin,
-      west: bounds.getWest() - lngMargin,
-    };
+    const overlay = fogOverlayRef.current;
 
-    // 画面内にあるか判定する軽量関数
+    // オーバーレイ要素のCSS干渉を無効化し、クリック透過・全面配置を保証
+    overlay.style.pointerEvents = 'none';
+    overlay.style.background = 'none';
+    overlay.style.webkitMaskImage = 'none';
+    overlay.style.maskImage = 'none';
+    overlay.style.position = 'absolute';
+    overlay.style.inset = '0';
+    overlay.style.zIndex = '5';
+
+    // 内部に描画用Canvasを1度だけ生成
+    if (!canvasRef.current) {
+      const canvas = document.createElement('canvas');
+      canvas.style.position = 'absolute';
+      canvas.style.inset = '0';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.pointerEvents = 'none';
+      overlay.innerHTML = '';
+      overlay.appendChild(canvas);
+      canvasRef.current = canvas;
+    }
+
+    const canvas = canvasRef.current;
+    const rect = overlay.getBoundingClientRect();
+    const width = Math.floor(rect.width || map.getCanvas().clientWidth);
+    const height = Math.floor(rect.height || map.getCanvas().clientHeight);
+
+    if (width === 0 || height === 0) return;
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    if (canvas.width !== Math.floor(width * dpr) || canvas.height !== Math.floor(height * dpr)) {
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+
+    // 1. 画面全体を水都らしい淡い白霧で塗りつぶす
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(241, 248, 255, 0.80)';
+    ctx.fillRect(0, 0, width, height);
+
+    // 表示領域の簡易カリング
+    const bounds = map.getBounds();
+    const latMargin = (bounds.getNorth() - bounds.getSouth()) * 0.25;
+    const lngMargin = (bounds.getEast() - bounds.getWest()) * 0.25;
+    const north = bounds.getNorth() + latMargin;
+    const south = bounds.getSouth() - latMargin;
+    const east = bounds.getEast() + lngMargin;
+    const west = bounds.getWest() - lngMargin;
+
     const isVisible = (lngLat) => {
+      if (!Array.isArray(lngLat) || lngLat.length < 2) return false;
       const [lng, lat] = lngLat;
-      return (
-        lat <= paddedBounds.north &&
-        lat >= paddedBounds.south &&
-        lng <= paddedBounds.east &&
-        lng >= paddedBounds.west
-      );
+      return lat <= north && lat >= south && lng <= east && lng >= west;
     };
 
     const clearedSpotsData = SPOTS_DATA
@@ -66,72 +108,64 @@ export function useFogOverlay({
 
     const cruisingPoints = (cruisedLocations || []).map(lngLat => ({
       lngLat,
-      radiusMeters: 50 
+      radiusMeters: 50
     }));
 
-    const currentLocPoint = userLocation ? [{ lngLat: userLocation, radiusMeters: buddyActive ? 50 : 25 }] : [];
+    const currentLocPoint = userLocation
+      ? [{ lngLat: userLocation, radiusMeters: buddyActive ? 50 : 25 }]
+      : [];
 
-    // 全ポイントから画面内のものだけを抽出（処理を劇的に軽くする）
-    const allRevealPoints = [...clearedSpotsData, ...walkingPoints, ...cruisingPoints, ...currentLocPoint]
-      .filter(item => isVisible(item.lngLat));
-    
-    const overlay = fogOverlayRef.current;
-    
-    // 操作妨害を防ぐための必須設定
-    overlay.style.pointerEvents = 'none';
-    overlay.style.willChange = 'mask-image, -webkit-mask-image';
-    overlay.style.transition = 'none';
+    const allRevealPoints = [
+      ...clearedSpotsData,
+      ...walkingPoints,
+      ...cruisingPoints,
+      ...currentLocPoint
+    ].filter(item => isVisible(item.lngLat));
 
-    if (allRevealPoints.length === 0) {
-      overlay.style.webkitMaskImage = 'none';
-      overlay.style.maskImage = 'none';
-      return;
-    }
+    // 2. クリア済み・歩行軌跡・現在地の霧を円形グラデーションでくり抜く
+    ctx.globalCompositeOperation = 'destination-out';
 
-    const gradients = allRevealPoints.map(item => {
+    for (const item of allRevealPoints) {
       const pixelPos = map.project(item.lngLat);
-      if (pixelPos && !isNaN(pixelPos.x) && !isNaN(pixelPos.y)) {
-        const radiusPx = getPixelRadiusFromMeters(map, item.lngLat, item.radiusMeters);
-        if (radiusPx < 0.5) return null;
-        
-        // 少数第一位で丸めてCSS文字列のパース負荷を軽減
-        const px = pixelPos.x.toFixed(1);
-        const py = pixelPos.y.toFixed(1);
-        const r = radiusPx.toFixed(1);
-        return `radial-gradient(circle ${r}px at ${px}px ${py}px, transparent 20%, black 85%)`;
-      }
-      return null;
-    }).filter(Boolean);
+      if (!pixelPos || isNaN(pixelPos.x) || isNaN(pixelPos.y)) continue;
 
-    if (gradients.length === 0) {
-      overlay.style.webkitMaskImage = 'none';
-      overlay.style.maskImage = 'none';
-      return;
+      const radiusPx = getPixelRadiusFromMeters(map, item.lngLat, item.radiusMeters);
+      if (radiusPx < 0.5) continue;
+
+      const grad = ctx.createRadialGradient(
+        pixelPos.x,
+        pixelPos.y,
+        radiusPx * 0.2,
+        pixelPos.x,
+        pixelPos.y,
+        radiusPx
+      );
+      grad.addColorStop(0, 'rgba(0, 0, 0, 1)');
+      grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.85)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(pixelPos.x, pixelPos.y, radiusPx, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    const maskStyle = gradients.join(', ');
-
-    overlay.style.webkitMaskImage = maskStyle;
-    overlay.style.maskImage = maskStyle;
-    overlay.style.webkitMaskRepeat = 'no-repeat';
-    overlay.style.maskRepeat = 'no-repeat';
-    overlay.style.webkitMaskComposite = 'source-over';
-    overlay.style.maskComposite = 'intersect';
-    
-  }, [clearedSpots, visitedLocations, cruisedLocations, userLocation, fogRadiiRef, buddyActive]);
+    ctx.restore();
+  }, [clearedSpots, visitedLocations, cruisedLocations, userLocation, fogRadiiRef, buddyActive, mapRef, fogOverlayRef]);
 
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
 
-    // renderイベントのみで完全にマップ描画と同期させる
     map.on('render', updateFogPosition);
+    map.on('resize', updateFogPosition);
     updateFogPosition();
 
     return () => {
       map.off('render', updateFogPosition);
+      map.off('resize', updateFogPosition);
     };
-  }, [updateFogPosition]);
+  }, [updateFogPosition, mapRef]);
 
   return { updateFogPosition };
 }

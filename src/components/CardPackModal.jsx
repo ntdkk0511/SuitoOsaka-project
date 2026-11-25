@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 
-function UkiyoePlaceholder({ spot, className = '' }) {
+function UkiyoePlaceholder({ spot, className = '', photoStyle, containerStyle }) {
+  const [imageFailed, setImageFailed] = useState(false);
   return (
-    <div className={`ukiyoe-placeholder ${className}`} style={{ backgroundImage: `url("${spot.ukiyoeImage}")` }}>
-      <svg viewBox="0 0 240 300" role="img" aria-label={`${spot.name}の仮イラスト`}>
+    <div className={`ukiyoe-placeholder ${className}`} style={containerStyle}>
+      {!imageFailed && <img className="ukiyoe-photo" style={photoStyle} src={spot.ukiyoeImage} alt={`${spot.name}`} onError={() => setImageFailed(true)} />}
+      <svg className={imageFailed ? '' : 'ukiyoe-fallback'} viewBox="0 0 240 300" role="img" aria-label={`${spot.name}の仮イラスト`}>
         <defs><linearGradient id="ukiyoe-sky" x2="0" y2="1"><stop stopColor="#bae6fd"/><stop offset="1" stopColor="#e0f2fe"/></linearGradient></defs>
         <rect width="240" height="300" fill="url(#ukiyoe-sky)"/><circle cx="179" cy="62" r="26" fill="#d78c61" opacity=".8"/>
         <path d="M0 194 Q45 170 88 192 T174 188 T240 191 V300 H0Z" fill="#38bdf8"/><path d="M0 222 Q58 204 112 222 T240 220 V300 H0Z" fill="#0284c7"/>
@@ -43,7 +45,7 @@ export default function CardPackModal({ spot, isBuddyClear = false, onComplete, 
         .pack-top:after{content:'';position:absolute;bottom:9px;left:14px;right:14px;border-bottom:2px dashed #f8dda0}.pack-top.open{pointer-events:none}
         .pack-card{position:absolute;z-index:2;width:220px;height:315px;padding:10px;border-radius:14px;background:#f8eedc;box-shadow:0 18px 45px #0008;transform-origin:center;display:flex;flex-direction:column;opacity:0;transition:transform 1.2s cubic-bezier(.2,.8,.2,1),opacity .4s}
         .pack-card.reveal{opacity:1;transform:translateY(-28px) scale(1.05)}.pack-card.fly{transform:translate(40vw,40vh) scale(.12) rotate(18deg);opacity:.15}.pack-card h3{font-size:16px;margin:8px 4px;color:#513b30!important;text-align:center}
-        .ukiyoe-placeholder{height:250px;overflow:hidden;border-radius:9px;background:linear-gradient(150deg,#bae6fd,#e0f2fe);background-size:cover}.ukiyoe-placeholder svg{display:block;width:100%;height:100%}
+        .ukiyoe-placeholder{height:250px;overflow:hidden;border-radius:9px;background:linear-gradient(150deg,#bae6fd,#e0f2fe);position:relative}.ukiyoe-placeholder svg{display:block;width:100%;height:100%}.ukiyoe-placeholder .ukiyoe-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center}.ukiyoe-placeholder .ukiyoe-fallback{display:none}
         .buddy-badge{display:inline-flex;align-self:center;margin:4px auto;padding:5px 12px;border-radius:999px;background:linear-gradient(90deg,#fff3a5,#f6c94e,#fff3a5);color:#754b11!important;font-size:12px;font-weight:800;box-shadow:0 0 15px #ffe481;animation:buddy-glow 1.4s ease-in-out infinite alternate}
         @keyframes buddy-glow{to{box-shadow:0 0 24px #fff2a1;filter:brightness(1.15)}}
         .pack-close{position:absolute;right:0;top:0;border:0;border-radius:99px;width:38px;height:38px;background:#fff;color:#253d40!important;font-size:20px;cursor:pointer}

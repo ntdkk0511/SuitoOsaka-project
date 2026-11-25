@@ -574,48 +574,23 @@ export default function App() {
 
             {/* 特典・クーポンタブ */}
             {activeTab === 'rewards' && (
-              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>特典・クーポン</h2>
-                <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '12px', padding: '16px', textAlign: 'center', marginBottom: '16px' }}>
-                  <p style={{ fontSize: '12px', color: '#b45309', margin: 0, fontWeight: '500' }}>現在の所持ポイント</p>
-                  <p style={{ fontSize: '28px', fontWeight: '800', color: '#78350f', margin: '4px 0 0 0' }}>{userPoints} <span style={{ fontSize: '14px', fontWeight: 'normal' }}>pt</span></p>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#444', margin: 0 }}>利用可能なクーポン</h3>
-                  {COUPONS_DATA.map((coupon) => (
-                    <div key={coupon.id} style={{ background: '#fff', padding: '12px', borderRadius: '12px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <p style={{ fontWeight: 'bold', fontSize: '14px', margin: 0, color: '#333' }}>{coupon.title}</p>
-                        <p style={{ fontSize: '12px', color: '#666', margin: '4px 0 0 0' }}>必要ポイント: {coupon.price} pt</p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedCoupon(coupon)}
-                        style={{ background: '#0284c7', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-                      >
-                        使ってみる
-                      </button>
-                    </div>
-                  ))}
+              <div className="rewards-page">
+                <style>{`.rewards-page{max-width:520px;margin:0 auto;padding:20px 16px 28px}.rewards-page h2{letter-spacing:.02em}.rewards-page h3{margin:2px 0 0}.rewards-page .points-card{border:1px solid #ffffff80;background:radial-gradient(circle at 88% 12%,#ffffff55 0 2%,transparent 2.5% 100%),linear-gradient(135deg,rgba(2,132,199,.96),rgba(14,165,233,.93) 58%,rgba(125,211,252,.96));backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 18px 40px rgba(2,132,199,.24),inset 0 1px 0 #ffffff80}.rewards-page .coupon-ticket{background:linear-gradient(135deg,rgba(255,255,255,.88),rgba(240,249,255,.68));backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.94);box-shadow:0 10px 26px rgba(3,105,161,.12),inset 0 1px 0 #fff;transition:transform .22s cubic-bezier(.22,1,.36,1),box-shadow .22s}.rewards-page .coupon-ticket:hover{transform:translateY(-2px);box-shadow:0 15px 30px rgba(3,105,161,.17),inset 0 1px 0 #fff}.rewards-page .coupon-ticket button{box-shadow:0 5px 14px rgba(2,132,199,.25)}.rewards-page h2{color:#075985;margin:0 0 16px;font-size:22px}.points-card{position:relative;overflow:hidden;padding:22px;border-radius:23px;background:linear-gradient(135deg,#0284c7,#0ea5e9 58%,#7dd3fc);color:#fff;box-shadow:0 16px 30px #0284c733;margin-bottom:22px}.points-card:after{content:'';position:absolute;width:170px;height:170px;border-radius:50%;right:-48px;top:-70px;background:#ffffff25}.points-card *{color:#fff!important}.coupon-ticket{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px;background:linear-gradient(120deg,#fff,#f0f9ff);border:1px solid #bae6fd;border-radius:17px;box-shadow:0 7px 18px #0369a115}.coupon-ticket:before,.coupon-ticket:after{content:'';position:absolute;top:50%;width:18px;height:18px;background:#e0f2fe;border:1px solid #bae6fd;border-radius:50%;transform:translateY(-50%)}.coupon-ticket:before{left:-10px}.coupon-ticket:after{right:-10px}.coupon-ticket button{transition:transform .18s,background .18s}.coupon-ticket button:hover{background:#0369a1!important;transform:translateY(-1px)}.coupon-ticket button:active{transform:scale(.96)}`}</style>
+                <h2>特典・クーポン</h2>
+                <div className="points-card"><p style={{fontSize:13,margin:0,fontWeight:600,opacity:.9}}>現在のポイント残高</p><p style={{fontSize:34,fontWeight:800,margin:'6px 0 2px'}}>{userPoints} <span style={{fontSize:15,fontWeight:500}}>pt</span></p><span style={{fontSize:11,letterSpacing:'.12em',opacity:.85}}>SUITO MEMBER</span></div>
+                <div style={{display:'flex',flexDirection:'column',gap:12}}><h3 style={{fontSize:16,fontWeight:800,color:'#075985',margin:0}}>利用できるクーポン</h3>
+                  {COUPONS_DATA.map(coupon=><div key={coupon.id} className="coupon-ticket"><div><p style={{fontWeight:800,fontSize:15,margin:0,color:'#0c4a6e'}}>{coupon.title}</p><p style={{fontSize:12,color:'#64748b',margin:'5px 0 0'}}>必要ポイント <b style={{color:'#0284c7'}}>{coupon.price} pt</b></p></div><button onClick={()=>setSelectedCoupon(coupon)} style={{background:'#0284c7',color:'#fff',border:0,padding:'9px 14px',borderRadius:10,fontSize:12,fontWeight:800,cursor:'pointer',flexShrink:0}}>使う</button></div>)}
                 </div>
               </div>
             )}
-
             {/* ランキングタブ */}
             {activeTab === 'ranking' && (
-              <div style={{ padding: '16px', maxWidth: '480px', margin: '0 auto' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 'bold', borderBottom: '1px solid #eee', paddingBottom: '8px', marginBottom: '16px', color: '#111' }}>スコアランキング</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {ranking.map((item, index) => (
-                    <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#fff', borderRadius: '8px', border: '1px solid #eee' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500' }}>{item.nickname || '名無し'}</span>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#2563eb' }}>{item.score || 0} pt</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="leaderboard">
+                <style>{`.leaderboard{max-width:520px;margin:0 auto;padding:20px 16px 28px}.leaderboard h2{letter-spacing:.02em}.leaderboard .leader-row{background:linear-gradient(140deg,rgba(255,255,255,.88),rgba(240,249,255,.68));border:1px solid rgba(255,255,255,.9);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 9px 22px rgba(3,105,161,.1),inset 0 1px 0 #fff;transition:transform .2s,box-shadow .2s}.leaderboard .leader-row:hover{transform:translateY(-1px);box-shadow:0 13px 26px rgba(3,105,161,.15)}.leaderboard .leader-row.me{background:linear-gradient(135deg,rgba(224,242,254,.96),rgba(186,230,253,.76));border-color:rgba(125,211,252,.9);box-shadow:0 8px 24px rgba(2,132,199,.16),inset 0 1px 0 #fff}.leaderboard .leader-rank{box-shadow:inset 0 1px 0 rgba(255,255,255,.9)}.leaderboard h2{margin:0 0 16px;color:#075985;font-size:22px}.leader-list{display:flex;flex-direction:column;gap:9px}.leader-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;background:#fff;border:1px solid #dbeafe;border-radius:16px;box-shadow:0 4px 12px #0369a10b}.leader-row.me{background:#e0f2fe;border-color:#7dd3fc;box-shadow:0 5px 16px #0284c71c}.leader-rank{min-width:52px;height:36px;padding:6px 10px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:12px;background:#f1f5f9;color:#475569;font-weight:800;flex:none;flex-shrink:0;white-space:nowrap}.leader-rank.gold{background:#fef3c7;color:#b45309}.leader-rank.silver{background:#e2e8f0;color:#475569}.leader-rank.bronze{background:#ffedd5;color:#9a3412}.leader-name{min-width:0;flex:1;font-weight:700;color:#0c4a6e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.leader-score{flex-shrink:0;color:#0284c7;font-weight:800;white-space:nowrap}.you-badge{flex-shrink:0;white-space:nowrap;padding:4px 8px;border-radius:99px;background:#bae6fd;color:#0369a1;font-size:10px;font-weight:800}`}</style>
+                <h2>スコアランキング</h2>
+                <div className="leader-list">{ranking.map((item,index)=>{const isMe=Boolean(user?.uid)&&item.uid===user.uid;const medal=['🥇','🥈','🥉'][index];return <div key={item.id||item.uid||index} className={'leader-row'+(isMe?' me':'')}><span className={'leader-rank'+(index===0?' gold':index===1?' silver':index===2?' bronze':'')}>{index<3?'👑 '+(index+1):index+1}</span><span className="leader-name">{item.nickname||'名無し'}</span>{isMe&&<span className="you-badge">あなた</span>}<span className="leader-score">{item.score||0} pt</span></div>})}</div>
               </div>
             )}
-
             {/* マイページタブ */}
             {activeTab === 'mypage' && (
               <MyPageView
