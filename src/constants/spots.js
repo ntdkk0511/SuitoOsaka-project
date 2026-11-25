@@ -1,4 +1,4 @@
-export const SPOTS_DATA = [
+const SPOTS_BASE_DATA = [
   {
     id: 'central-hall',
     name: '中央公会堂',
@@ -180,3 +180,24 @@ export const SPOTS_DATA = [
     }
   },
 ];
+
+// Illustration paths gare kept as simple public paths so real artwork can be
+// dropped in later without changing the card components.
+const EDO_NAMES = {
+  'nakanishima-park': '中之島',
+  'osaka-castle-pier': '大坂城',
+  'zouheikyoku': '川崎村（造幣局周辺）',
+  'osaka-castle': '大坂城',
+  'hachikenya-pier': '八軒家浜',
+  'tenjinbashi-bridge': '天神橋',
+  'oie-bridge': '大江橋',
+  'oriental-ceramics-museum': '中之島',
+};
+
+export const SPOTS_DATA = SPOTS_BASE_DATA.map((spot, index) => ({
+  ...spot,
+  edoName: EDO_NAMES[spot.id] || '—',
+  ukiyoeImage: `/images/ukiyoe/${spot.id}.svg`,
+  trivia: `${spot.name}は、大阪の水辺の歴史と人々の暮らしを今に伝える場所です。周辺の町並みや水運の記憶にも目を向けてみましょう。`,
+  spotNumber: index + 1,
+}));

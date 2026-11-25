@@ -1,352 +1,74 @@
-import React, { useRef, useState } from 'react';
-import HTMLFlipBook from 'react-pageflip';
+import React, { useEffect, useRef, useState } from 'react';
 import { SPOTS_DATA } from '../constants/spots';
+import { UkiyoePlaceholder } from './CardPackModal';
 
-// 📖 ページコンポーネント
-const Page = React.forwardRef(({ children, density = 'soft', pageNum, isLeft = false }, ref) => {
-  return (
-    <div className="page-sheet" ref={ref} data-density={density}>
-      <div className={`page-inner ${isLeft ? 'page-left-inner' : 'page-right-inner'}`}>
-        {children}
-        {pageNum && <div className="page-footer-num">- {pageNum} -</div>}
-      </div>
-    </div>
-  );
-});
+const styles = `
+.ency-overlay{position:fixed;inset:0;z-index:9990;background:rgba(8,35,52,.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:14px 14px calc(92px + env(safe-area-inset-bottom));overflow:auto}
+.ency-shell{width:min(100%,820px);max-height:94vh;overflow:auto;position:relative;border-radius:22px;background:#f0f9ff;padding:22px;box-shadow:0 24px 70px #0008}
+.ency-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.ency-head h2{margin:0;color:#075985!important;font-size:22px}.ency-close{border:0;border-radius:99px;width:38px;height:38px;background:#dbeafe;color:#075985!important;font-size:22px;cursor:pointer}.ency-close:disabled{opacity:.45;cursor:not-allowed}
+.ency-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.ency-tile{min-width:0;padding:0;border:1px solid #bae6fd;border-radius:14px;background:linear-gradient(160deg,#fff,#f0f9ff);text-align:center;cursor:pointer;transition:transform .2s,box-shadow .2s;overflow:visible;display:flex;flex-direction:column;box-shadow:0 2px 8px #0369a112}.ency-tile:hover{transform:translateY(-3px);box-shadow:0 8px 22px #0369a122}.ency-grid .ency-art{display:block;flex:none;width:100%;aspect-ratio:4/5;min-height:0;overflow:visible;border-radius:13px 13px 0 0;background:#e0f2fe}.ency-grid .ency-art .ukiyoe-placeholder{width:100%;height:100%;overflow:visible;border-radius:13px 13px 0 0;background-size:cover}.ency-grid .ency-art .ukiyoe-placeholder svg{width:100%;height:100%;object-fit:contain}.ency-title{flex:none;min-height:42px;display:flex;align-items:center;justify-content:center;padding:7px 8px;box-sizing:border-box;border-radius:0 0 13px 13px;background:#f0f9ff;color:#0c4a6e!important;font-size:12px;line-height:1.3;overflow-wrap:anywhere}.ency-tile.locked{background:#f1f5f9;border-color:#cbd5e1;box-shadow:none;cursor:default}.ency-grid .ency-tile.locked .ency-art{display:grid;place-items:center;background:#e2e8f0}.ency-lock-visual{display:grid;place-items:center;gap:5px;width:100%;height:100%;color:#94a3b8}.ency-lock-visual svg{width:44%;height:44%;max-width:96px;max-height:96px;filter:drop-shadow(0 2px 2px #64748b22)}.ency-lock-icon{position:absolute;right:8px;top:8px;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;background:#f8fafc;color:#64748b;font-size:14px;box-shadow:0 1px 4px #47556933}.ency-grid .ency-tile.locked .ency-title{background:#f8fafc;color:#64748b!important;font-size:15px;font-weight:700;letter-spacing:.12em}.ency-empty{grid-column:1/-1;padding:36px 16px;text-align:center;border:1px dashed #7dd3fc;border-radius:16px;color:#075985!important;background:#e0f2fe;line-height:1.8}
+.ency-detail{position:fixed;inset:0;z-index:9991;background:rgba(8,35,52,.94);display:flex;align-items:center;justify-content:center;padding:18px 18px calc(92px + env(safe-area-inset-bottom));touch-action:pan-y}.ency-detail-panel{width:min(100%,420px);text-align:center;color:#e0f2fe!important;position:relative}.ency-detail-head{display:flex;align-items:center;justify-content:space-between;margin:0 auto 10px;width:min(86vw,330px);color:#fff}.ency-detail-head button{border:0;border-radius:999px;padding:8px 13px;background:#e0f2fe;color:#075985!important;font-weight:700;cursor:pointer}.ency-detail-head span{font-size:13px;color:#e0f2fe!important}
+.ency-card-perspective{perspective:1200px;width:min(86vw,330px);height:min(470px,66vh);min-height:370px;margin:0 auto 12px;cursor:pointer}.ency-card-inner{position:relative;width:100%;height:100%;transition:transform .72s cubic-bezier(.2,.75,.2,1);transform-style:preserve-3d}.ency-card-inner.flipped{transform:rotateY(180deg)}.ency-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:17px;border:1px solid #7dd3fc;background:linear-gradient(160deg,#f0f9ff,#dbeafe);padding:14px;box-shadow:0 22px 60px #0008;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}.ency-front{padding:12px}.ency-front .ency-art{flex:1;min-height:0;overflow:hidden;border-radius:11px;background:#bae6fd}.ency-front .ency-art .ukiyoe-placeholder{height:100%!important;min-height:0}.ency-front h3{flex:none;margin:10px 0 0;padding:12px 10px;border-radius:10px;background:rgba(2,132,199,.92);color:#fff!important;font-size:19px;line-height:1.35;box-shadow:0 4px 14px #07598533}.ency-back{transform:rotateY(180deg);text-align:left;justify-content:flex-start;overflow-y:auto;background:linear-gradient(145deg,#f0f9ff,#e0f2fe)}.ency-back h3{margin:0 0 12px;color:#075985!important;text-align:center;font-size:20px}.ency-back .ency-date{padding:10px 12px;border-radius:10px;background:#bae6fd;color:#0c4a6e!important;font-weight:700}.ency-back p{line-height:1.7;font-size:14px;color:#164e63!important;margin:8px 0}.ency-back strong{color:#0369a1!important}.ency-badge{position:absolute;z-index:2;top:13px;right:13px;padding:5px 9px;border-radius:99px;background:linear-gradient(135deg,#0284c7,#38bdf8);color:#fff!important;box-shadow:0 3px 12px #07598555;font-size:11px;font-weight:bold}
+.ency-tip{color:#e0f2fe!important;font-size:12px;margin:8px}.ency-nav{display:flex;justify-content:space-between;position:absolute;inset:50% max(0px,calc((100% - 390px)/2)) auto;pointer-events:none}.ency-nav button{pointer-events:auto;width:40px;height:40px;border:0;border-radius:50%;background:#fff;color:#0369a1!important;font-size:20px;box-shadow:0 4px 16px #0003;cursor:pointer}
+@media(max-width:480px){.ency-shell{padding:16px}.ency-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.ency-title{font-size:11px}.ency-card-perspective{height:min(62vh,440px);min-height:350px}.ency-tile{min-width:0}.ency-nav{inset:48% 0 auto}}
+`;
 
-Page.displayName = 'Page';
-
-export function EncyclopediaModal({ isOpen, onClose }) {
-  const bookRef = useRef(null);
-  const [currentPage, setCurrentPage] = useState(0);
-
+export function EncyclopediaModal({ isOpen, onClose, obtainedCards = {} }) {
+  const [selectedId, setSelectedId] = useState(null);
+  const [flipped, setFlipped] = useState(false);
+  const touchStart = useRef(null);
+  useEffect(() => { if (!isOpen) { setSelectedId(null); setFlipped(false); } }, [isOpen]);
   if (!isOpen) return null;
 
-  const handleNext = () => {
-    if (bookRef.current) {
-      bookRef.current.pageFlip().flipNext();
+  const owned = SPOTS_DATA.filter(spot => obtainedCards[spot.id]);
+  const selected = owned.find(spot => spot.id === selectedId);
+  const selectedIndex = owned.findIndex(spot => spot.id === selectedId);
+  const move = direction => {
+    if (!owned.length) return;
+    const next = (selectedIndex + direction + owned.length) % owned.length;
+    setSelectedId(owned[next].id);
+    setFlipped(false);
+  };
+  const showList = () => { setSelectedId(null); setFlipped(false); };
+  const share = async () => {
+    if (!selected) return;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="600" height="820"><defs><linearGradient id="g" x2="0" y2="1"><stop stop-color="#38bdf8"/><stop offset="1" stop-color="#e0f2fe"/></linearGradient></defs><rect width="600" height="820" rx="36" fill="#f0f9ff"/><rect x="28" y="28" width="544" height="764" rx="24" fill="url(#g)"/><circle cx="450" cy="145" r="65" fill="#7dd3fc"/><path d="M28 510 Q145 470 270 510 T572 504 V792 H28Z" fill="#0284c7"/><text x="300" y="660" text-anchor="middle" font-size="42" fill="#fff">${selected.name}</text></svg>`;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `suito-card-${selected.id}.svg`; a.click();
+    URL.revokeObjectURL(url);
+    if (navigator.share && navigator.canShare) {
+      try { const file = new File([blob], `suito-card-${selected.id}.svg`, { type: 'image/svg+xml' }); if (navigator.canShare({ files: [file] })) await navigator.share({ title: selected.name, files: [file] }); } catch { /* Share may be dismissed. */ }
     }
   };
 
-  const handlePrev = () => {
-    if (bookRef.current) {
-      bookRef.current.pageFlip().flipPrev();
-    }
-  };
-
-  const onPageChange = (e) => {
-    setCurrentPage(e.data);
-  };
-
-  return (
-    /* 🎯 背景クリックによる閉じる処理を排除（×ボタンでのみ終了） */
-    <div className="encyclopedia-overlay">
-      <style>{`
-        /* 📖 モーダル背景 */
-        .encyclopedia-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(10, 15, 25, 0.88);
-          backdrop-filter: blur(10px);
-          z-index: 9999;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 8px;
-        }
-
-        .book-modal-container {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        /* 📱 画面幅に応じて見開き全体をレスポンシブ縮小 */
-        .book-scaler {
-          width: 560px;
-          height: 420px;
-          display: flex;
-          justify-content: center;
-        }
-
-        @media (max-width: 600px) {
-          .book-scaler {
-            transform: scale(0.62);
-            transform-origin: center center;
-            margin: -60px 0;
-          }
-        }
-
-        @media (max-width: 380px) {
-          .book-scaler {
-            transform: scale(0.52);
-            margin: -80px 0;
-          }
-        }
-
-        .book-close-btn {
-          position: absolute;
-          top: -44px;
-          right: 0;
-          background: rgba(255, 255, 255, 0.2);
-          border: none;
-          color: white;
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          font-size: 16px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10;
-          transition: background 0.2s;
-        }
-
-        .book-close-btn:hover {
-          background: rgba(255, 255, 255, 0.4);
-        }
-
-        /* 📄 紙の装飾 */
-        .page-sheet {
-          background-color: #fcfaf7;
-          overflow: hidden;
-        }
-
-        .page-inner {
-          width: 100%;
-          height: 100%;
-          padding: 20px 18px 30px 18px;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          position: relative;
-          border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        /* 📕 ノド（中央の立体影） */
-        .page-left-inner {
-          box-shadow: inset -15px 0 15px -10px rgba(0, 0, 0, 0.12);
-        }
-        .page-right-inner {
-          box-shadow: inset 15px 0 15px -10px rgba(0, 0, 0, 0.12);
-        }
-
-        /* 📘 表紙スタイル */
-        .cover-page {
-          background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-          color: #f8fafc;
-          border: 2px solid #334155;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          gap: 12px;
-        }
-
-        /* 🎨 左ページ：イラスト＆ステータス画面 */
-        .spot-visual-box {
-          width: 100%;
-          height: 160px;
-          background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-          border-radius: 10px;
-          border: 2px dashed #0284c7;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          color: #0369a1;
-          margin-top: 8px;
-        }
-
-        .spot-badge-left {
-          display: inline-block;
-          padding: 4px 10px;
-          background: #0284c7;
-          color: white;
-          border-radius: 12px;
-          font-size: 11px;
-          font-weight: bold;
-        }
-
-        .stamp-box {
-          margin-top: 12px;
-          padding: 8px 12px;
-          border: 2px solid #22c55e;
-          color: #15803d;
-          background: #f0fdf4;
-          border-radius: 8px;
-          font-size: 11px;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        /* 📝 右ページ：説明＆クイズ画面 */
-        .spot-title-right {
-          font-size: 18px;
-          font-weight: 800;
-          color: #0f172a;
-          margin: 4px 0 2px 0;
-          line-height: 1.3;
-        }
-
-        .spot-en-right {
-          font-size: 11px;
-          color: #64748b;
-          margin-bottom: 10px;
-        }
-
-        .spot-desc-box {
-          font-size: 12px;
-          line-height: 1.6;
-          color: #334155;
-          background: #ffffff;
-          padding: 10px;
-          border-radius: 8px;
-          border: 1px solid #e2e8f0;
-        }
-
-        .quiz-hint-box {
-          margin-top: 8px;
-          padding: 10px;
-          background: #fefce8;
-          border-radius: 8px;
-          border: 1px solid #fde047;
-          font-size: 11px;
-          color: #713f12;
-        }
-
-        .page-footer-num {
-          position: absolute;
-          bottom: 8px;
-          left: 0;
-          right: 0;
-          text-align: center;
-          font-size: 10px;
-          color: #94a3b8;
-        }
-
-        /* 画面下のボタン */
-        .book-controls {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          margin-top: 12px;
-        }
-
-        .ctrl-btn {
-          padding: 8px 18px;
-          background: #0284c7;
-          color: white;
-          border: none;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-        }
-      `}</style>
-
-      <div className="book-modal-container">
-        {/* 🎯 この×ボタンのみ閉じるアクション（onClose）を実行 */}
-        <button className="book-close-btn" onClick={onClose}>✕</button>
-
-        <div className="book-scaler">
-          <HTMLFlipBook
-            width={280}
-            height={420}
-            size="fixed"
-            minWidth={280}
-            maxWidth={280}
-            minHeight={420}
-            maxHeight={420}
-            maxShadowOpacity={0.4}
-            showCover={true}
-            usePortrait={false}
-            mobileScrollSupport={true}
-            onFlip={onPageChange}
-            ref={bookRef}
-          >
-            {/* 表紙 */}
-            <Page density="hard">
-              <div className="cover-page page-inner">
-                <div style={{ fontSize: '42px' }}>🚢</div>
-                <h1 style={{ fontSize: '20px', color: '#38bdf8', margin: 0 }}>水の都ガイドブック</h1>
-                <p style={{ fontSize: '11px', color: '#94a3b8' }}>Suito Time-Walk</p>
-                <span style={{ fontSize: '10px', color: '#64748b', marginTop: '20px' }}>
-                  ◀ ページをめくって閲覧
-                </span>
-              </div>
-            </Page>
-
-            {/* 各スポットの見開き（左：ビジュアル＆スタンプ / 右：解説＆クイズ） */}
-            {SPOTS_DATA.map((spot, index) => [
-              /* 🎨 左ページ */
-              <Page key={`${spot.id}-left`} pageNum={index * 2 + 1} isLeft={true}>
-                <div>
-                  <span className="spot-badge-left">SPOT #{spot.id}</span>
-                  
-                  <div className="spot-visual-box">
-                    <div style={{ fontSize: '36px' }}>📍</div>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold' }}>MAP SPOT</span>
-                  </div>
-
-                  <div className="stamp-box">
-                    <span>済</span>
-                    <span>訪問達成スタンプ欄</span>
-                  </div>
-                </div>
-
-                <div style={{ fontSize: '10px', color: '#94a3b8', textAlign: 'center' }}>
-                  位置: {spot.lngLat[0]}, {spot.lngLat[1]}
-                </div>
-              </Page>,
-
-              /* 📝 右ページ */
-              <Page key={`${spot.id}-right`} pageNum={index * 2 + 2} isLeft={false}>
-                <div>
-                  <h2 className="spot-title-right">{spot.name}</h2>
-                  <div className="spot-en-right">{spot.englishName}</div>
-
-                  <div className="spot-desc-box">
-                    {spot.desc}
-                  </div>
-
-                  {spot.quiz && (
-                    <div className="quiz-hint-box">
-                      <strong>💡 クイズヒント:</strong><br />
-                      {spot.quiz.q}
-                    </div>
-                  )}
-                </div>
-              </Page>
-            ])}
-
-            {/* 裏表紙 */}
-            <Page density="hard" isLeft={true}>
-              <div className="cover-page page-inner">
-                <h2 style={{ fontSize: '18px', color: '#38bdf8' }}>COMPLETE!</h2>
-                <p style={{ fontSize: '11px', color: '#94a3b8' }}>
-                  すべてのスポットを巡って<br />水の都を制覇しよう！
-                </p>
-              </div>
-            </Page>
-          </HTMLFlipBook>
-        </div>
-
-        {/* コントロールバー */}
-        <div className="book-controls">
-          <button className="ctrl-btn" onClick={handlePrev}>◀ 前へ</button>
-          <span style={{ color: 'white', fontSize: '12px', fontWeight: 'bold' }}>
-            {currentPage === 0 ? '表紙' : `${Math.ceil(currentPage / 2)} / ${SPOTS_DATA.length}`}
-          </span>
-          <button className="ctrl-btn" onClick={handleNext}>次へ ▶</button>
-        </div>
+  return <>
+    <style>{styles}</style>
+    <div className="ency-overlay" role="dialog" aria-modal="true" aria-label="水都の歴史図鑑">
+      <div className="ency-shell">
+        <div className="ency-head"><h2>水都・歴史図鑑 <small style={{fontSize:13,color:'#0284c7'}}> {owned.length}/{SPOTS_DATA.length}</small></h2><button className="ency-close" onClick={() => { if (owned.length) { setSelectedId(owned[0].id); setFlipped(false); } }} aria-label="カードを1枚ずつ見る" title={owned.length ? 'カードを1枚ずつ見る' : '獲得カードがありません'} disabled={!owned.length}>×</button></div>
+        <div className="ency-grid">
+          {SPOTS_DATA.map(spot => {
+            const isOwned = Boolean(obtainedCards[spot.id]);
+            return <button key={spot.id} className={`ency-tile${isOwned ? '' : ' locked'}`} disabled={!isOwned} onClick={() => { setSelectedId(spot.id); setFlipped(false); }} aria-label={isOwned ? spot.name : '未獲得'}>
+              <div className="ency-art">{isOwned ? <UkiyoePlaceholder spot={spot}/> : <div className="ency-lock-visual" aria-hidden="true"><span className="ency-lock-icon">🔒</span><svg viewBox="0 0 120 120" focusable="false"><circle cx="60" cy="39" r="23" fill="currentColor"/><path d="M17 112c2-28 18-43 43-43s41 15 43 43" fill="currentColor"/><path d="M0 116h120" stroke="#cbd5e1" strokeWidth="8"/></svg></div>}</div><strong className="ency-title">{isOwned ? spot.name : '？？？'}</strong>
+            </button>;
+          })}        </div>
       </div>
     </div>
-  );
+    {selected && <div className="ency-detail" onTouchStart={e => { touchStart.current = e.touches[0].clientX; }} onTouchEnd={e => { if (touchStart.current == null) return; const dx = e.changedTouches[0].clientX - touchStart.current; if (Math.abs(dx) > 55) move(dx < 0 ? 1 : -1); touchStart.current = null; }} onMouseDown={e => { touchStart.current = e.clientX; }} onMouseUp={e => { if (touchStart.current == null) return; const dx = e.clientX - touchStart.current; if (Math.abs(dx) > 70) move(dx < 0 ? 1 : -1); touchStart.current = null; }}>
+      <div className="ency-detail-panel">
+        <div className="ency-detail-head"><button onClick={showList} aria-label="一覧に戻る">× 一覧に戻る</button><span>{selectedIndex + 1} / {owned.length}</span></div>
+        <div className="ency-card-perspective" onClick={() => setFlipped(value => !value)} role="button" aria-label="カードを裏返す">
+          <div className={`ency-card-inner ${flipped ? 'flipped' : ''}`}>
+            <div className="ency-face ency-front"><div className="ency-art"><UkiyoePlaceholder spot={selected}/></div><h3>{selected.name}</h3>{obtainedCards[selected.id]?.isBuddyClear && <span className="ency-badge">ペア達成</span>}</div>
+            <div className="ency-face ency-back"><h3>{selected.name}</h3><p className="ency-date">ゲットした日：{obtainedCards[selected.id]?.obtainedAt || '日付不明'}</p><p><strong>江戸時代の呼び名</strong><br/>{selected.edoName || '—'}</p><p><strong>場所の解説</strong><br/>{selected.desc}</p><p><strong>豆知識</strong><br/>{selected.trivia || '—'}</p></div>
+          </div>
+        </div>
+        <p className="ency-tip">カードをタップで裏返す・左右にスワイプでカードを切り替え</p>
+        <button onClick={share} style={{border:0,borderRadius:99,padding:'10px 17px',background:'#0284c7',color:'#fff',fontWeight:700,cursor:'pointer'}}>画像を保存・共有</button>
+      </div>
+      <div className="ency-nav"><button aria-label="前のカード" onClick={e => {e.stopPropagation();move(-1);}}>‹</button><button aria-label="次のカード" onClick={e => {e.stopPropagation();move(1);}}>›</button></div>
+    </div>}
+  </>;
 }
