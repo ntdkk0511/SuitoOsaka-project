@@ -7,6 +7,8 @@ export default function CouponUseModal({ isOpen, onClose, coupon }) {
   const [timeLeft, setTimeLeft] = useState(300);
   const startXRef = useRef(0);
   const storageKey = coupon ? `tw_coupon_used_${coupon.id}` : '';
+  const usedAtKey = coupon ? `tw_coupon_used_at_${coupon.id}` : '';
+  const usedAt = usedAtKey ? localStorage.getItem(usedAtKey) : null;
 
   useEffect(() => {
     if (!isOpen || !coupon) return;

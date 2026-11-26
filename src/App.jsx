@@ -10,7 +10,7 @@ import {
   EmailAuthProvider, 
   linkWithCredential 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
 import { SPOTS_DATA } from './constants/spots';
 import { isWithinRadius } from './utils/geo';
@@ -47,8 +47,10 @@ const OSAKA_HIRAKATA_BOUNDS = [
 ];
 
 const COUPONS_DATA = [
-  { id: 'cosmos-50', title: 'ドラッグストア コスモス 50円引き', price: 100 },
-  { id: 'cafe-100', title: 'リバーサイドカフェ 100円OFF', price: 150 },
+  { id: 'cosmos-50', title: 'ドラッグストア コスモス 50円引き', description: '対象店舗でのお買い物に使えるクーポン', price: 100, icon: '🛍️' },
+  { id: 'cafe-100', title: '水都カフェ 100円OFFクーポン', description: '中之島・北浜エリアの提携カフェでドリンク100円引き', price: 100, icon: '☕' },
+  { id: 'aqualiner-10', title: '大阪水上バス（アクアライナー）乗船料 10%OFF', description: '大阪城港・八軒家浜船着場窓口で提示', price: 300, icon: '🛳️' },
+  { id: 'hirakata-sweets', title: '枚方宿 歴史街道 お土産・和菓子 1品プレゼント', description: '枚方公園〜枚方市駅周辺の提携和菓子店で使用可能', price: 200, icon: '🍡' },
 ];
 
 export default function App() {
@@ -83,7 +85,7 @@ export default function App() {
     return saved;
   });
   const [nickname, setNickname] = useState(() => localStorage.getItem('tw_nickname') || `水都冒険者_${Math.floor(1000 + Math.random() * 9000)}`);
-  const [userPoints, setUserPoints] = useState(120);
+  const [userPoints, setUserPoints] = useState(() => Number(localStorage.getItem('tw_user_points') ?? 120));
 
   // 水上バスの状態
   const [isCruising, setIsCruising] = useState(false);
@@ -115,6 +117,7 @@ export default function App() {
 
   // クーポン選択モーダルの状態
   const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [pendingCoupon, setPendingCoupon] = useState(null);
 
   // Firebase
   const [user, setUser] = useState(null);
@@ -122,6 +125,7 @@ export default function App() {
   const [showBuddyModal, setShowBuddyModal] = useState(false);
   const [buddy, setBuddy] = useState(null);
   const [buddyTrail, setBuddyTrail] = useState([]);
+  const lastBuddySyncRef = useRef({ location: null, at: 0 });
 
   const isAppLoading = showSplash || showLiquidLoader;
 
@@ -164,6 +168,8 @@ export default function App() {
     fogOverlayRef,
     clearedSpots,
     visitedLocations: sharedTrail,
+    ownVisitedLocations: visitedLocations,
+    buddyVisitedLocations: buddyTrail,
     cruisedLocations,
     userLocation,
     fogRadiiRef,
@@ -209,6 +215,7 @@ export default function App() {
   useEffect(() => localStorage.setItem('tw_cleared_spots', JSON.stringify(clearedSpots)), [clearedSpots]);
   useEffect(() => localStorage.setItem('tw_obtained_cards', JSON.stringify(obtainedCards)), [obtainedCards]);
   useEffect(() => localStorage.setItem('tw_nickname', nickname), [nickname]);
+  useEffect(() => localStorage.setItem('tw_user_points', String(userPoints)), [userPoints]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -227,16 +234,21 @@ export default function App() {
       const peerId = data.participants?.find(id => id !== user?.uid);
       const peer = peerId && data.members?.[peerId];
       if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, roomId: buddy.roomId } : current);
-      setBuddyTrail(Array.isArray(data.visitedLocations) ? data.visitedLocations : []);
+      setBuddyTrail(Array.isArray(peer?.visitedLocations) ? peer.visitedLocations : (Array.isArray(data.visitedLocations) ? data.visitedLocations : []));
     });
     return unsubscribe;
   }, [buddy?.roomId, user?.uid]);
 
   useEffect(() => {
-    if (!buddy?.roomId || !user?.uid || !visitedLocations.length) return;
-    setDoc(doc(db, 'buddies', buddy.roomId), { visitedLocations: arrayUnion(...visitedLocations), updatedAt: Date.now() }, { merge: true })
+    if (!buddy?.roomId || !user?.uid || !userLocation) return;
+    const now = Date.now();
+    const previous = lastBuddySyncRef.current;
+    const movedEnough = !previous.location || isWithinRadius(userLocation, previous.location, 5).isNear === false;
+    if (!movedEnough && now - previous.at < 4000) return;
+    lastBuddySyncRef.current = { location: userLocation, at: now };
+    updateDoc(doc(db, 'buddies', buddy.roomId), { [`members.${user.uid}.uid`]: user.uid, [`members.${user.uid}.nickname`]: nickname, [`members.${user.uid}.location`]: userLocation, [`members.${user.uid}.visitedLocations`]: visitedLocations.slice(-150), updatedAt: now })
       .catch(error => console.error('Buddy trail sync failed', error));
-  }, [buddy?.roomId, user?.uid, visitedLocations]);
+  }, [buddy?.roomId, user?.uid, userLocation, nickname]);
 
   useEffect(() => {
     if (!showLiquidLoader) return;
@@ -265,6 +277,7 @@ export default function App() {
         if (userDoc.exists()) {
           const data = userDoc.data();
           if (data.score > score) setScore(data.score);
+          if (Number.isFinite(data.userPoints)) setUserPoints(data.userPoints);
           if (data.clearedSpots && data.clearedSpots.length > clearedSpots.length) setClearedSpots(data.clearedSpots);
           if (data.obtainedCards) setObtainedCards(previous => ({ ...previous, ...data.obtainedCards }));
           if (data.nickname) setNickname(data.nickname);
@@ -284,9 +297,9 @@ export default function App() {
 
   useEffect(() => {
     if (user) {
-      setDoc(doc(db, "users", user.uid), { nickname, score, clearedSpots, obtainedCards, lastUpdated: new Date() }, { merge: true });
+      setDoc(doc(db, "users", user.uid), { nickname, score, userPoints, clearedSpots, obtainedCards, lastUpdated: new Date() }, { merge: true });
     }
-  }, [score, clearedSpots, obtainedCards, nickname, user]);
+  }, [score, userPoints, clearedSpots, obtainedCards, nickname, user]);
 
   useEffect(() => {
     if (isAppLoading || mapRef.current || !mapContainerRef.current) return;
@@ -355,6 +368,16 @@ export default function App() {
       mapRef.current.flyTo({ center: userLocation, zoom: 17, pitch: 15, duration: 1200 });
     }
   }, [userLocation, isAppLoading]);
+
+  useEffect(() => {
+    if (!mapRef.current || !buddy?.location) return;
+    if (!markersRef.current.buddy) {
+      const element = document.createElement('div');
+      element.setAttribute('aria-label', `${buddy.nickname || 'パートナー'}の現在地`);
+      element.innerHTML = '<div style="width:30px;height:30px;border-radius:50%;background:#fb7185;border:3px solid white;box-shadow:0 2px 10px #0f172a55;display:grid;place-items:center;color:white;font-weight:800">B</div>';
+      markersRef.current.buddy = new mapboxgl.Marker({ element, anchor: 'center' }).setLngLat(buddy.location).addTo(mapRef.current);
+    } else markersRef.current.buddy.setLngLat(buddy.location);
+  }, [buddy?.location, buddy?.nickname, isAppLoading]);
 
   useEffect(() => {
     if (isAppLoading) return;
@@ -453,7 +476,12 @@ export default function App() {
   const handleLeaveBuddy = async () => {
     const roomId = buddy?.roomId;
     setBuddy(null);
-    if (roomId) await deleteDoc(doc(db, 'buddies', roomId)).catch(error => console.error('Buddy room cleanup failed', error));
+    if (roomId && user?.uid) {
+      const roomRef = doc(db, 'buddies', roomId);
+      const room = await getDoc(roomRef).catch(() => null);
+      await setDoc(roomRef, { participants: (room?.data()?.participants || []).filter(id => id !== user.uid), updatedAt: Date.now() }, { merge: true }).catch(error => console.error('Buddy room cleanup failed', error));
+    }
+    if (markersRef.current.buddy) { markersRef.current.buddy.remove(); delete markersRef.current.buddy; }
   };
 
   const handleARShutter = () => {
@@ -516,23 +544,25 @@ export default function App() {
               {!isCruising && (
                 <button
                   onClick={() => setShowWaterBusQR(true)}
+                  aria-label="水上バス乗船"
+                  title="水上バス乗船"
                   style={{
                     position: 'absolute', top: '16px', right: '16px', zIndex: 80,
                     background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff',
-                    border: 'none', padding: '10px 14px', borderRadius: '20px',
-                    fontWeight: 'bold', fontSize: '13px', cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'flex', alignItems: 'center', gap: '6px'
+                    border: 'none', padding: 0, width: 48, height: 48, borderRadius: '50%',
+                    cursor: 'pointer', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'grid', placeItems: 'center'
                   }}
                 >
-                  水上バスに乗る
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 16.5 5 9h14l2 7.5-4 3-5-3-5 3-4-3Z"/><path d="M8 9V5h8v4M2 21c1.2-1 2.3-1 3.5 0s2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0"/></svg>
                 </button>
               )}
-              {!buddy && <button onClick={handleStartBuddy} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 80, background: 'linear-gradient(135deg,#0e7490,#06b6d4)', color: '#fff', border: 0, padding: '10px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', boxShadow: '0 4px 12px #0891b255' }}>仲間と合流</button>}
+              <button onClick={buddy ? handleLeaveBuddy : handleStartBuddy} aria-label={buddy ? '合流を解除する' : '友達合流'} title={buddy ? '合流を解除する' : '友達合流'} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 80, width: 48, height: 48, display: 'grid', placeItems: 'center', background: buddy ? '#16a34a' : 'linear-gradient(135deg,#0e7490,#06b6d4)', color: '#fff', border: 0, padding: 0, borderRadius: '50%', cursor: 'pointer', boxShadow: '0 4px 12px #0891b255' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.4-3 2.3-4.5 5.5-4.5s5.1 1.5 5.5 4.5M16 5.5a3 3 0 0 1 0 5.8M17 14.7c2.2.4 3.4 1.8 3.7 4.3"/></svg>{buddy&&<span style={{position:'absolute',right:0,top:0,width:11,height:11,borderRadius:'50%',background:'#86efac',border:'2px solid white'}}/>}</button>
 
               {/* 📍 現在地ボタン（水上バス乗船ボタンの下に配置） */}
               <button
                 onClick={handleRecenter}
                 title="現在地へ移動"
+                aria-label="現在地へ移動"
                 style={{
                   position: 'absolute',
                   top: !isCruising ? '64px' : '16px',
@@ -541,18 +571,16 @@ export default function App() {
                   background: '#ffffff',
                   color: userLocation ? '#0284c7' : '#64748b',
                   border: '1px solid #e2e8f0',
-                  padding: '10px 14px',
-                  borderRadius: '20px',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
+                  padding: 0,
+                  width: 48, height: 48,
+                  borderRadius: '50%',
                   cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
+                  display: 'grid',
+                  placeItems: 'center'
                 }}
               >
-                📍 現在地
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
               </button>
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
@@ -579,7 +607,7 @@ export default function App() {
                 <h2>特典・クーポン</h2>
                 <div className="points-card"><p style={{fontSize:13,margin:0,fontWeight:600,opacity:.9}}>現在のポイント残高</p><p style={{fontSize:34,fontWeight:800,margin:'6px 0 2px'}}>{userPoints} <span style={{fontSize:15,fontWeight:500}}>pt</span></p><span style={{fontSize:11,letterSpacing:'.12em',opacity:.85}}>SUITO MEMBER</span></div>
                 <div style={{display:'flex',flexDirection:'column',gap:12}}><h3 style={{fontSize:16,fontWeight:800,color:'#075985',margin:0}}>利用できるクーポン</h3>
-                  {COUPONS_DATA.map(coupon=><div key={coupon.id} className="coupon-ticket"><div><p style={{fontWeight:800,fontSize:15,margin:0,color:'#0c4a6e'}}>{coupon.title}</p><p style={{fontSize:12,color:'#64748b',margin:'5px 0 0'}}>必要ポイント <b style={{color:'#0284c7'}}>{coupon.price} pt</b></p></div><button onClick={()=>setSelectedCoupon(coupon)} style={{background:'#0284c7',color:'#fff',border:0,padding:'9px 14px',borderRadius:10,fontSize:12,fontWeight:800,cursor:'pointer',flexShrink:0}}>使う</button></div>)}
+                  {COUPONS_DATA.map(coupon=><div key={coupon.id} className="coupon-ticket"><div style={{display:'flex',gap:12,alignItems:'center'}}><span aria-hidden="true" style={{fontSize:27,background:'#e0f2fe',borderRadius:12,padding:8}}>{coupon.icon}</span><div><p style={{fontWeight:800,fontSize:15,margin:0,color:'#0c4a6e'}}>{coupon.title}</p><p style={{fontSize:12,color:'#64748b',margin:'5px 0 0'}}>{coupon.description}</p><p style={{fontSize:12,color:'#64748b',margin:'5px 0 0'}}>必要ポイント <b style={{color:'#0284c7'}}>{coupon.price} pt</b></p></div></div><button disabled={userPoints < coupon.price} onClick={()=>setPendingCoupon(coupon)} style={{background:userPoints < coupon.price ? '#94a3b8' : '#0284c7',color:'#fff',border:0,padding:'9px 14px',borderRadius:10,fontSize:12,fontWeight:800,cursor:userPoints < coupon.price?'not-allowed':'pointer',flexShrink:0}}>{userPoints < coupon.price ? `あと${coupon.price-userPoints}pt` : '使う'}</button></div>)}
                 </div>
               </div>
             )}
@@ -629,13 +657,15 @@ export default function App() {
             coupon={selectedCoupon}
           />
 
+          {pendingCoupon && <div role="dialog" aria-modal="true" style={{position:'fixed',inset:0,zIndex:12000,display:'grid',placeItems:'center',background:'#082f4988',padding:20}}><div style={{background:'white',padding:24,borderRadius:20,maxWidth:360,textAlign:'center'}}><h3>{pendingCoupon.title}を使用しますか？</h3><p>{pendingCoupon.price}ptを消費します。現在の保有ポイントは{userPoints}ptです。</p><button onClick={()=>{if(userPoints < pendingCoupon.price)return;const now=Date.now();localStorage.setItem(`tw_coupon_used_${pendingCoupon.id}`,String(now+5*60*1000));localStorage.setItem(`tw_coupon_used_at_${pendingCoupon.id}`,new Date(now).toISOString());setUserPoints(points=>points-pendingCoupon.price);setSelectedCoupon(pendingCoupon);setPendingCoupon(null);}}>確認して使う</button><button style={{marginLeft:10}} onClick={()=>setPendingCoupon(null)}>キャンセル</button></div></div>}
+
           <WaterBusQRModal
             isOpen={showWaterBusQR}
             onClose={() => setShowWaterBusQR(false)}
             onStartCruise={() => setIsCruising(true)}
           />
 
-          <BuddyShakeModal isOpen={showBuddyModal} uid={user?.uid} nickname={nickname} location={userLocation} onClose={() => setShowBuddyModal(false)} onPaired={handleBuddyPaired} />
+          <BuddyShakeModal isOpen={showBuddyModal} uid={user?.uid} nickname={nickname} location={userLocation} visitedLocations={visitedLocations} onClose={() => setShowBuddyModal(false)} onPaired={handleBuddyPaired} />
 
           {showQuiz && (
             <QuizModal

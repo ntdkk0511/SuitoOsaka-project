@@ -20,6 +20,8 @@ export function useFogOverlay({
   fogOverlayRef,
   clearedSpots,
   visitedLocations,
+  ownVisitedLocations = [],
+  buddyVisitedLocations = [],
   cruisedLocations,
   userLocation,
   fogRadiiRef,
@@ -151,8 +153,46 @@ export function useFogOverlay({
       ctx.fill();
     }
 
+    if (buddyActive) {
+      const mask = document.createElement('canvas');
+      mask.width = canvas.width; mask.height = canvas.height;
+      const mctx = mask.getContext('2d');
+      mctx.scale(dpr, dpr);
+      const paintFootprints = points => {
+        mctx.clearRect(0, 0, width, height);
+        mctx.fillStyle = '#fff';
+        for (const point of points || []) {
+          const pixel = map.project(point);
+          const radius = getPixelRadiusFromMeters(map, point, 50);
+          if (!pixel || radius < 0.5) continue;
+          mctx.beginPath(); mctx.arc(pixel.x, pixel.y, radius, 0, Math.PI * 2); mctx.fill();
+        }
+      };
+      const drawMasked = (points, color) => {
+        paintFootprints(points);
+        const layer = document.createElement('canvas'); layer.width = canvas.width; layer.height = canvas.height;
+        const layerCtx = layer.getContext('2d'); layerCtx.fillStyle = color; layerCtx.fillRect(0, 0, width * dpr, height * dpr);
+        layerCtx.globalCompositeOperation = 'destination-in'; layerCtx.drawImage(mask, 0, 0);
+        ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(layer, 0, 0, width, height); ctx.restore();
+      };
+      // Own and partner territory receive separate translucent color washes.
+      drawMasked(ownVisitedLocations, 'rgba(56,189,248,0.30)');
+      drawMasked(buddyVisitedLocations, 'rgba(251,113,133,0.30)');
+      // Intersect both footprint masks, then paint their shared area with a soft pastel spectrum.
+      paintFootprints(ownVisitedLocations);
+      const ownMask = document.createElement('canvas'); ownMask.width = canvas.width; ownMask.height = canvas.height;
+      ownMask.getContext('2d').drawImage(mask, 0, 0);
+      paintFootprints(buddyVisitedLocations);
+      mctx.globalCompositeOperation = 'destination-in'; mctx.drawImage(ownMask, 0, 0);
+      const rainbow = ctx.createLinearGradient(0, 0, width, height);
+      rainbow.addColorStop(0, 'rgba(249,168,212,0.42)'); rainbow.addColorStop(.25, 'rgba(253,230,138,0.42)'); rainbow.addColorStop(.5, 'rgba(167,243,208,0.42)'); rainbow.addColorStop(.75, 'rgba(147,197,253,0.42)'); rainbow.addColorStop(1, 'rgba(196,181,253,0.42)');
+      const rainbowLayer = document.createElement('canvas'); rainbowLayer.width = canvas.width; rainbowLayer.height = canvas.height;
+      const rainbowCtx = rainbowLayer.getContext('2d'); rainbowCtx.scale(dpr, dpr); rainbowCtx.fillStyle = rainbow; rainbowCtx.fillRect(0, 0, width, height); rainbowCtx.globalCompositeOperation = 'destination-in'; rainbowCtx.drawImage(mask, 0, 0);
+      ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.drawImage(rainbowLayer, 0, 0, width, height); ctx.restore();
+    }
+
     ctx.restore();
-  }, [clearedSpots, visitedLocations, cruisedLocations, userLocation, fogRadiiRef, buddyActive, mapRef, fogOverlayRef]);
+  }, [clearedSpots, visitedLocations, ownVisitedLocations, buddyVisitedLocations, cruisedLocations, userLocation, fogRadiiRef, buddyActive, mapRef, fogOverlayRef]);
 
   useEffect(() => {
     if (!mapRef.current) return;
