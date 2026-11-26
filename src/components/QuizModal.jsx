@@ -1,45 +1,25 @@
 import React from 'react';
 
-export default function QuizModal({
-  currentSpot,
-  quizSelected,
-  setQuizSelected,
-  quizFeedback,
-  onClose,
-  onSubmit
-}) {
+export default function QuizModal({ currentSpot, quizSelected, setQuizSelected, quizFeedback, onClose, onSubmit }) {
   return (
     <div className="aquatic-modal-overlay">
-      <div className="aquatic-modal-content">
-        <span className="modal-badge">MISSION</span>
-        <h3>歴史・舟運クイズ</h3>
+      <div className="aquatic-modal-content mission-modal">
+        <span className="modal-badge">CHECKPOINT MISSION</span>
+        <p className="mission-step">街を歩く <span>›</span> ミッション <span>›</span> カードを集める</p>
+        <h3>街の記憶クイズ</h3>
         <p className="quiz-q">{currentSpot.quiz.q}</p>
-        
         <div className="quiz-choices-vertical">
           {currentSpot.quiz.choices.map((choice, idx) => (
-            <button
-              key={idx}
-              // フィードバック表示中（判定結果表示中）はタップ無効化
-              disabled={!!quizFeedback}
-              className={`quiz-choice-btn ${quizSelected === idx ? 'selected' : ''}`}
-              onClick={() => {
-                // ✨変更点: タップした瞬間に選択状態にして即座に判定関数を実行
-                setQuizSelected(idx);
-                onSubmit(idx);
-              }}
-            >
-              {idx + 1}. {choice}
+            <button key={idx} disabled={!!quizFeedback} className={`quiz-choice-btn ${quizSelected === idx ? 'selected' : ''}`} onClick={() => { setQuizSelected(idx); onSubmit(idx); }}>
+              <span className="mission-choice-index">{String(idx + 1).padStart(2, '0')}</span>{choice}
             </button>
           ))}
         </div>
-
         {quizFeedback && <p className="feedback-message">{quizFeedback}</p>}
-
-        <div className="modal-footer-btns">
-          {/* ✨変更点: 即時判定のため「回答する」ボタンを削除し、離脱ボタンのみ配置 */}
-          <button className="cancel-btn" onClick={onClose}>閉じる</button>
-        </div>
+        <p className="mission-reward-note">正解すると、この場所のカードパックを獲得できます。</p>
+        <div className="modal-footer-btns"><button className="cancel-btn" onClick={onClose}>閉じる</button></div>
       </div>
+      <style>{`.mission-modal{border-radius:24px;border:1px solid rgba(255,255,255,.9);box-shadow:0 22px 60px rgba(11,56,67,.2)}.mission-modal .modal-badge{display:inline-flex;padding:6px 10px;background:#ddf5fa;border-radius:99px;color:#287f9b!important;letter-spacing:.1em}.mission-step{margin:12px 0 0;color:#66848a!important;font-size:11px;letter-spacing:.03em}.mission-step span{padding:0 5px;color:#80cfe3!important}.mission-modal h3{color:#174b5a!important}.mission-choice-index{flex:none;color:#287f9b!important;font-size:11px;letter-spacing:.1em}.mission-modal .quiz-choice-btn{display:flex;align-items:center;gap:12px;min-height:48px;border-radius:13px;border-color:#d9e9e7;color:#315a62!important}.mission-modal .quiz-choice-btn.selected{background:#ddf5fa;border-color:#80cfe3;color:#174b5a!important}.mission-reward-note{margin:12px 0 0;color:#66848a!important;font-size:12px;line-height:1.5;text-align:center}.mission-modal .cancel-btn{color:#52727a!important}`}</style>
     </div>
   );
 }
