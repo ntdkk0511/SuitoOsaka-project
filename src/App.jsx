@@ -541,47 +541,20 @@ export default function App() {
                 onEndCruise={() => setIsCruising(false)}
               />
 
-              {!isCruising && (
-                <button
-                  onClick={() => setShowWaterBusQR(true)}
-                  aria-label="水上バス乗船"
-                  title="水上バス乗船"
-                  style={{
-                    position: 'absolute', top: '16px', right: '16px', zIndex: 80,
-                    background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff',
-                    border: 'none', padding: 0, width: 48, height: 48, borderRadius: '50%',
-                    cursor: 'pointer', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.4)', display: 'grid', placeItems: 'center'
-                  }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 16.5 5 9h14l2 7.5-4 3-5-3-5 3-4-3Z"/><path d="M8 9V5h8v4M2 21c1.2-1 2.3-1 3.5 0s2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0"/></svg>
+              <div style={{ position: 'absolute', top: '72px', right: '14px', display: 'flex', flexDirection: 'column', gap: '12px', zIndex: 20 }}>
+                <button onClick={buddy ? handleLeaveBuddy : handleStartBuddy} aria-label={buddy ? '合流を解除する' : '友達合流'} title={buddy ? '合流を解除する' : '友達合流'} style={{ position: 'relative', width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', padding: 0, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1.5px solid #bae6fd', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', cursor: 'pointer' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.4-3 2.3-4.5 5.5-4.5s5.1 1.5 5.5 4.5M16 5.5a3 3 0 0 1 0 5.8M17 14.7c2.2.4 3.4 1.8 3.7 4.3"/></svg>
+                  {buddy && <span aria-label="オンライン" style={{ position: 'absolute', top: '0px', right: '0px', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#22c55e', border: '2px solid #ffffff' }} />}
                 </button>
-              )}
-              <button onClick={buddy ? handleLeaveBuddy : handleStartBuddy} aria-label={buddy ? '合流を解除する' : '友達合流'} title={buddy ? '合流を解除する' : '友達合流'} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 80, width: 48, height: 48, display: 'grid', placeItems: 'center', background: buddy ? '#16a34a' : 'linear-gradient(135deg,#0e7490,#06b6d4)', color: '#fff', border: 0, padding: 0, borderRadius: '50%', cursor: 'pointer', boxShadow: '0 4px 12px #0891b255' }}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.4-3 2.3-4.5 5.5-4.5s5.1 1.5 5.5 4.5M16 5.5a3 3 0 0 1 0 5.8M17 14.7c2.2.4 3.4 1.8 3.7 4.3"/></svg>{buddy&&<span style={{position:'absolute',right:0,top:0,width:11,height:11,borderRadius:'50%',background:'#86efac',border:'2px solid white'}}/>}</button>
-
-              {/* 📍 現在地ボタン（水上バス乗船ボタンの下に配置） */}
-              <button
-                onClick={handleRecenter}
-                title="現在地へ移動"
-                aria-label="現在地へ移動"
-                style={{
-                  position: 'absolute',
-                  top: !isCruising ? '64px' : '16px',
-                  right: '16px',
-                  zIndex: 80,
-                  background: '#ffffff',
-                  color: userLocation ? '#0284c7' : '#64748b',
-                  border: '1px solid #e2e8f0',
-                  padding: 0,
-                  width: 48, height: 48,
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)',
-                  display: 'grid',
-                  placeItems: 'center'
-                }}
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
-              </button>
+                {!isCruising && (
+                  <button onClick={() => setShowWaterBusQR(true)} aria-label="水上バス乗船" title="水上バス乗船" style={{ position: 'relative', width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', padding: 0, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1.5px solid #bae6fd', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', cursor: 'pointer' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M3 16.5 5 9h14l2 7.5-4 3-5-3-5 3-4-3Z"/><path d="M8 9V5h8v4M2 21c1.2-1 2.3-1 3.5 0s2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0 2.3 1 3.5 0"/></svg>
+                  </button>
+                )}
+                <button onClick={handleRecenter} title="現在地へ移動" aria-label="現在地へ移動" style={{ position: 'relative', width: '48px', height: '48px', minWidth: '48px', minHeight: '48px', padding: 0, borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1.5px solid #bae6fd', boxShadow: '0 4px 12px rgba(14, 165, 233, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7', cursor: 'pointer' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+                </button>
+              </div>
 
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
