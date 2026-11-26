@@ -1,17 +1,21 @@
 import React from 'react';
 
-export default function QuizModal({ currentSpot, quizSelected, setQuizSelected, quizFeedback, onClose, onSubmit }) {
+export default function QuizModal({ currentSpot, isCurrentCleared = false, quizSelected, setQuizSelected, quizFeedback, onClose, onSubmit }) {
+  const quizText = value => {
+    if (isCurrentCleared) return value;
+    return [currentSpot.name, currentSpot.englishName].filter(Boolean).reduce((text, name) => text.replaceAll(name, '???'), value);
+  };
   return (
     <div className="aquatic-modal-overlay">
       <div className="aquatic-modal-content mission-modal">
         <span className="modal-badge">CHECKPOINT MISSION</span>
         <p className="mission-step">街を歩く <span>›</span> ミッション <span>›</span> カードを集める</p>
         <h3>街の記憶クイズ</h3>
-        <p className="quiz-q">{currentSpot.quiz.q}</p>
+        <p className="quiz-q">{quizText(currentSpot.quiz.q)}</p>
         <div className="quiz-choices-vertical">
           {currentSpot.quiz.choices.map((choice, idx) => (
             <button key={idx} disabled={!!quizFeedback} className={`quiz-choice-btn ${quizSelected === idx ? 'selected' : ''}`} onClick={() => { setQuizSelected(idx); onSubmit(idx); }}>
-              <span className="mission-choice-index">{String(idx + 1).padStart(2, '0')}</span>{choice}
+              <span className="mission-choice-index">{String(idx + 1).padStart(2, '0')}</span>{quizText(choice)}
             </button>
           ))}
         </div>
