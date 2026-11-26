@@ -20,6 +20,7 @@ import { useFogOverlay } from './hooks/useFogOverlay';
 import { useStepCounter } from './hooks/useStepCounter';
 import { canClaimSpotPoints, recordSpotClaim } from './utils/cooldown';
 import { calculateSpeedKmH, isValidWaterBusSpeed } from './utils/waterRoute';
+import { locationForMap, normalizeLocation, normalizeLocations, sanitizeBuddyData } from './utils/buddyData';
 
 import Splash from './components/Splash';
 import Header from './components/Header';
@@ -238,8 +239,8 @@ export default function App() {
       const data = snapshot.data();
       const peerId = data.participants?.find(id => id !== user?.uid);
       const peer = peerId && data.members?.[peerId];
-      if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, roomId: buddy.roomId } : current);
-      setBuddyTrail(Array.isArray(peer?.visitedLocations) ? peer.visitedLocations : (Array.isArray(data.visitedLocations) ? data.visitedLocations : []));
+      if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, location: locationForMap(peer.location), roomId: buddy.roomId } : current);
+      setBuddyTrail(normalizeLocations(peer?.visitedLocations ?? data.visitedLocations).map(point => [point.lng, point.lat]));
     });
     return unsubscribe;
   }, [buddy?.roomId, user?.uid]);
@@ -251,7 +252,7 @@ export default function App() {
     const movedEnough = !previous.location || isWithinRadius(userLocation, previous.location, 5).isNear === false;
     if (!movedEnough && now - previous.at < 4000) return;
     lastBuddySyncRef.current = { location: userLocation, at: now };
-    updateDoc(doc(db, 'buddies', buddy.roomId), { [`members.${user.uid}.uid`]: user.uid, [`members.${user.uid}.nickname`]: nickname, [`members.${user.uid}.location`]: userLocation, [`members.${user.uid}.visitedLocations`]: visitedLocations.slice(-150), updatedAt: now })
+    updateDoc(doc(db, 'buddies', buddy.roomId), sanitizeBuddyData({ [`members.${user.uid}.uid`]: user.uid, [`members.${user.uid}.nickname`]: nickname, [`members.${user.uid}.location`]: normalizeLocation(userLocation), [`members.${user.uid}.visitedLocations`]: normalizeLocations(visitedLocations.slice(-150)), updatedAt: now }))
       .catch(error => console.error('Buddy trail sync failed', error));
   }, [buddy?.roomId, user?.uid, userLocation, nickname]);
 
@@ -484,7 +485,7 @@ export default function App() {
   const handleStartBuddy = () => {
     setShowBuddyModal(true);
   };
-  const handleBuddyPaired = peer => { setBuddy(peer); setShowBuddyModal(false); };
+  const handleBuddyPaired = peer => { setBuddy({ ...peer, location: locationForMap(peer.location) }); setShowBuddyModal(false); };
   const handleLeaveBuddy = async () => {
     const roomId = buddy?.roomId;
     setBuddy(null);
