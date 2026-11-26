@@ -6,7 +6,7 @@ const tabs = [
   { id: 'encyclopedia', label: '図鑑', icon: '/icons/3-2.png' },
   { id: 'rewards', label: '特典', icon: '/icons/3-3.png' },
   { id: 'ranking', label: 'ランキング', icon: '/icons/3-4.png' },
-  { id: 'mypage', label: 'マイページ', icon: null },
+  { id: 'mypage', label: 'マイページ', icon: '/icons/3-5.png' },
 ];
 
 const spring = { type: 'spring', stiffness: 420, damping: 32, mass: 0.75 };
