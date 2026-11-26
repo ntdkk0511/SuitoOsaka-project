@@ -46,6 +46,39 @@ body {
   background: #e0f2fe;
 }
 
+/* SUITO: a clear water interface, with paper reserved for collected memories. */
+:root {
+  --bg-blue-light: #ddf5fa;
+  --accent-blue: #80cfe3;
+  --cyber-blue: #287f9b;
+  --osaka-ink: #174b5a;
+  --osaka-water: #287f9b;
+  --osaka-paper: #f8f5ee;
+  --glass-bg: rgba(255, 255, 255, .86);
+  --glass-border: rgba(128, 207, 227, .42);
+}
+
+body, #root { background: #ddf5fa; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible { outline: 3px solid #287f9b; outline-offset: 3px; }
+.bottom-tab-bar { background: rgba(248, 253, 254, .92); border: 1px solid rgba(255,255,255,.96); box-shadow: 0 10px 32px rgba(40,127,155,.2), inset 0 1px 0 white; }
+.bottom-tab.is-active { color: #287f9b; }
+.tab-pill { background: linear-gradient(135deg, rgba(128,207,227,.32), rgba(255,255,255,.94)); border-color: rgba(40,127,155,.2); }
+.integrated-bottom-dock { background: linear-gradient(180deg, rgba(248,253,254,.9), rgba(221,245,250,.97)); border-color: rgba(255,255,255,.94); box-shadow: 0 -12px 34px rgba(40,127,155,.12), inset 0 1px 0 white; }
+.embedded-story-card { border-color: rgba(128,207,227,.28); background: rgba(255,255,255,.74); border-radius: 18px; }
+.card-title { color: #174b5a; font-family: 'Noto Serif', 'Noto Sans JP', sans-serif !important; }
+.card-desc { color: #52727a !important; }
+.core-trigger { background: linear-gradient(145deg,#287f9b,#80cfe3); box-shadow: 0 6px 18px rgba(40,127,155,.28); }
+.ready-ar { background: linear-gradient(145deg,#287f9b,#80cfe3); }
+.map-native-marker.active .marker-core-label { background: #287f9b; }
+
+@media (max-width: 480px) {
+  .integrated-bottom-dock { padding: 12px 14px calc(18px + env(safe-area-inset-bottom)); gap: 10px; }
+  .embedded-story-card { padding: 12px 14px; }
+  .card-title { font-size: 1.2rem; }
+  .bottom-tab-bar { height: 66px; bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+
 .aquatic-header-minimal,
 .integrated-bottom-dock,
 .embedded-story-card,

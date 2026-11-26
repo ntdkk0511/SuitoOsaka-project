@@ -105,6 +105,7 @@ export default function App() {
   const [selectedSpotId, setSelectedSpotId] = useState('central-hall');
   const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [distanceLimitEnabled, setDistanceLimitEnabled] = useState(true);
   const [packSpotId, setPackSpotId] = useState(null);
   const [packBuddyClear, setPackBuddyClear] = useState(false);
   const [showCardPack, setShowCardPack] = useState(false);
@@ -195,19 +196,23 @@ export default function App() {
   const currentSpot = SPOTS_DATA.find(s => s.id === selectedSpotId) || SPOTS_DATA[0];
   const isCurrentCleared = clearedSpots.includes(selectedSpotId);
 
-  const { isNear: isNearCurrentSpot } = isWithinRadius(userLocation, currentSpot.lngLat, 40);
+  const challengeRadius = buddy ? 80 : 50;
+  const currentSpotDistance = isWithinRadius(userLocation, currentSpot.lngLat, challengeRadius);
+  const canAttemptMission = !distanceLimitEnabled || currentSpotDistance.isNear;
+  const remainingMissionDistance = currentSpotDistance.distance === null ? null : Math.max(0, currentSpotDistance.distance - challengeRadius);
+  const isNearCurrentSpot = currentSpotDistance.isNear;
 
   useEffect(() => {
     if (!userLocation) return;
     const nearSpot = SPOTS_DATA.find((spot) => {
-      const { isNear } = isWithinRadius(userLocation, spot.lngLat, 40);
+      const { isNear } = isWithinRadius(userLocation, spot.lngLat, buddy ? 80 : 50);
       return isNear;
     });
 
     if (nearSpot) {
       setSelectedSpotId(nearSpot.id);
     }
-  }, [userLocation]);
+  }, [userLocation, buddy]);
 
   const shouldShowDock = isManuallySelected || isNearCurrentSpot;
 
@@ -321,11 +326,13 @@ export default function App() {
       }
       SPOTS_DATA.forEach(spot => {
         const el = document.createElement('div');
-        const isCleared = clearedSpots.includes(spot.id);
+        const isCleared = clearedSpots.includes(spot.id) || Boolean(obtainedCards[spot.id]);
         el.className = `map-native-marker ${isCleared ? 'cleared' : 'locked'}`;
   
         const iconSrc = isCleared ? '/images/spot-cleared.png' : '/images/spot-locked.png';
 
+        el.title = isCleared ? spot.name : '???';
+        el.setAttribute('aria-label', isCleared ? spot.name : '未発見のスポット (???)');
         el.innerHTML = `
         <img src="${iconSrc}" class="marker-icon-img" style="width: 36px; height: 36px; object-fit: contain; display: block; margin: 0 auto;" />
         <div class="marker-core-label">${isCleared ? spot.name : '???'}</div>
@@ -347,7 +354,7 @@ export default function App() {
 
       setTimeout(updateFogPosition, 200);
     });
-  }, [isAppLoading]);
+  }, [isAppLoading, obtainedCards, clearedSpots]);
 
   useEffect(() => {
     if (isAppLoading || !userLocation || !mapRef.current) return;
@@ -385,12 +392,16 @@ export default function App() {
     Object.keys(markersRef.current).forEach(id => {
       const { element } = markersRef.current[id];
       const spot = SPOTS_DATA.find(s => s.id === id);
-      const isCleared = clearedSpots.includes(id);
+      const isCleared = clearedSpots.includes(id) || Boolean(obtainedCards[id]);
       const isSelected = id === selectedSpotId;
       if (element) {
         element.className = `map-native-marker mapboxgl-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
         const labelEl = element.querySelector('.marker-core-label');
         if (labelEl) labelEl.textContent = isCleared ? spot.name : '???';
+        if (spot) {
+          element.title = isCleared ? spot.name : '???';
+          element.setAttribute('aria-label', isCleared ? spot.name : '未発見のスポット (???)');
+        }
       }
     });
 
@@ -402,7 +413,7 @@ export default function App() {
       }
       setTimeout(updateFogPosition, 650);
     }
-  }, [selectedSpotId, clearedSpots, isAppLoading]);
+  }, [selectedSpotId, clearedSpots, obtainedCards, isAppLoading]);
 
   const handleRecenter = () => {
     if (mapRef.current) {
@@ -425,6 +436,11 @@ export default function App() {
   };
 
   const handleAnswerSubmit = (selectedIdx) => {
+    if (!canAttemptMission) {
+      setShowQuiz(false);
+      setQuizFeedback('チェックポイントに近づくとミッションに挑戦できます。');
+      return;
+    }
     if (selectedIdx === currentSpot.quiz.ans) {
       const canClaim = canClaimSpotPoints(currentSpot.id);
 
@@ -465,11 +481,7 @@ export default function App() {
     }
   };
 
-  const handleStartBuddy = async () => {
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-      try { if (await DeviceMotionEvent.requestPermission() !== 'granted') return; }
-      catch (error) { console.error('Motion permission was not granted', error); return; }
-    }
+  const handleStartBuddy = () => {
     setShowBuddyModal(true);
   };
   const handleBuddyPaired = peer => { setBuddy(peer); setShowBuddyModal(false); };
@@ -556,6 +568,15 @@ export default function App() {
                 </button>
               </div>
 
+              <button
+                type="button"
+                aria-pressed={!distanceLimitEnabled}
+                onClick={() => setDistanceLimitEnabled(enabled => !enabled)}
+                style={{ position: 'absolute', top: '58px', left: '12px', zIndex: 25, border: '1px solid #bae6fd', borderRadius: 999, padding: '7px 10px', background: distanceLimitEnabled ? 'rgba(255,255,255,.94)' : '#fef3c7', color: distanceLimitEnabled ? '#075985' : '#92400e', boxShadow: '0 3px 10px #07598522', fontSize: 11, fontWeight: 800, cursor: 'pointer' }}
+              >
+                {distanceLimitEnabled ? '距離制限: ON' : '距離制限: OFF (テスト用)'}
+              </button>
+
               <main className="map-stage-aquatic" style={{ width: '100%', height: '100%' }}>
                 <div ref={mapContainerRef} className="mapbox-container" style={{ width: '100%', height: '100%' }} />
                 <div ref={fogOverlayRef} className="map-fog-overlay" />
@@ -565,9 +586,11 @@ export default function App() {
                 <BottomDock
                   currentSpot={currentSpot}
                   isCurrentCleared={isCurrentCleared}
-                  isNearSpot={isNearCurrentSpot}
+                  isNearSpot={canAttemptMission}
+                  distanceLimitEnabled={distanceLimitEnabled}
+                  remainingDistance={remainingMissionDistance}
                   onRecenter={handleRecenter}
-                  onOpenQuiz={() => setShowQuiz(true)}
+                  onOpenQuiz={() => { if (canAttemptMission) { setQuizFeedback(''); setShowQuiz(true); } }}
                   onOpenAR={() => setShowAR(true)}
                 />
               )}
@@ -643,6 +666,7 @@ export default function App() {
           {showQuiz && (
             <QuizModal
               currentSpot={currentSpot}
+              isCurrentCleared={isCurrentCleared}
               quizSelected={quizSelected}
               setQuizSelected={setQuizSelected}
               quizFeedback={quizFeedback}
