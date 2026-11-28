@@ -37,10 +37,14 @@ export const locationForMap = value => {
 export const sanitizeBuddyData = (value, fieldName = '') => {
   if (value === undefined) return undefined;
   if (fieldName === 'location') return normalizeLocation(value);
-  if (fieldName === 'visitedLocations' || fieldName === 'trail') return normalizeLocations(value);
+  if (['visitedLocations', 'trail', 'exploredPaths', 'exploredLocations'].includes(fieldName)) return normalizeLocations(value);
   if (Array.isArray(value)) {
-    if (value.some(Array.isArray) || (value.length >= 2 && value.every(item => Number.isFinite(Number(item))))) return normalizeLocations(value);
-    return value.map(item => sanitizeBuddyData(item)).filter(item => item !== undefined);
+    // Convert coordinate pairs and collections of coordinate pairs to Firestore-safe objects.
+    if (value.length >= 2 && !Array.isArray(value[0]) && !Array.isArray(value[1])
+      && Number.isFinite(Number(value[0])) && Number.isFinite(Number(value[1]))) {
+      return normalizeLocation(value);
+    }
+    return value.map(item => sanitizeBuddyData(item)).filter(item => item !== undefined && !Array.isArray(item));
   }
   if (value && typeof value === 'object' && !(value instanceof Date)) {
     return Object.fromEntries(Object.entries(value)

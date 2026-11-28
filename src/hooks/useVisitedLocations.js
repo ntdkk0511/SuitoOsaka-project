@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { isWithinRadius } from '../utils/geo';
+import { normalizeLocations } from '../utils/buddyData';
 
 /**
  * GPS現在地を監視し、移動に応じて徒歩/水上バスの軌跡を記録・保存するフック
@@ -7,7 +8,9 @@ import { isWithinRadius } from '../utils/geo';
 export function useVisitedLocations(userLocation, isCruising) {
   // 🚶 徒歩の軌跡
   const [visitedLocations, setVisitedLocations] = useState(() => {
-    return JSON.parse(localStorage.getItem('tw_visited_locations') || '[]');
+    const localTrail = normalizeLocations(JSON.parse(localStorage.getItem('tw_visited_locations') || '[]')).map(point => [point.lng, point.lat]);
+    const cloudTrail = normalizeLocations(JSON.parse(localStorage.getItem('tw_cloud_visited_locations') || '[]')).map(point => [point.lng, point.lat]);
+    return [...new Map([...cloudTrail, ...localTrail].map(point => [`${point[0]}:${point[1]}`, point])).values()];
   });
 
   // 🚢 水上バスの軌跡 (新たに追加)
@@ -53,5 +56,5 @@ export function useVisitedLocations(userLocation, isCruising) {
     }
   }, [userLocation, isCruising]);
 
-  return { visitedLocations, cruisedLocations };
+  return { visitedLocations, setVisitedLocations, cruisedLocations };
 }

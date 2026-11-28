@@ -8,7 +8,9 @@ import {
   onAuthStateChanged, 
   linkWithPopup, 
   EmailAuthProvider, 
-  linkWithCredential 
+  linkWithCredential,
+  unlink,
+  reload 
 } from 'firebase/auth';
 import { doc, setDoc, updateDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 
@@ -106,6 +108,10 @@ export default function App() {
   const [selectedSpotId, setSelectedSpotId] = useState('central-hall');
   const [isManuallySelected, setIsManuallySelected] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+  const [isSubmittingAnswer, setIsSubmittingAnswer] = useState(false);
+  const answerLockRef = useRef(false);
+  const [feedbackCorrect, setFeedbackCorrect] = useState(false);
+  const [dockDismissed, setDockDismissed] = useState(false);
   const [distanceLimitEnabled, setDistanceLimitEnabled] = useState(true);
   const [packSpotId, setPackSpotId] = useState(null);
   const [packBuddyClear, setPackBuddyClear] = useState(false);
@@ -120,9 +126,11 @@ export default function App() {
   // クーポン選択モーダルの状態
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [pendingCoupon, setPendingCoupon] = useState(null);
+  const [showCouponHistory, setShowCouponHistory] = useState(false);
 
   // Firebase
   const [user, setUser] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const [ranking, setRanking] = useState([]);
   const [showBuddyModal, setShowBuddyModal] = useState(false);
   const [buddy, setBuddy] = useState(null);
@@ -155,7 +163,7 @@ export default function App() {
     }
   }, [steps]);
 
-  const { visitedLocations, cruisedLocations } = useVisitedLocations(userLocation, isCruising);
+  const { visitedLocations, setVisitedLocations, cruisedLocations } = useVisitedLocations(userLocation, isCruising);
 
   const fogRadiiRef = useRef({
     'central-hall': clearedSpots.includes('central-hall') ? 80 : 0,
@@ -215,7 +223,7 @@ export default function App() {
     }
   }, [userLocation, buddy]);
 
-  const shouldShowDock = isManuallySelected || isNearCurrentSpot;
+  const shouldShowDock = (isManuallySelected || isNearCurrentSpot) && !dockDismissed;
 
   useEffect(() => localStorage.setItem('tw_score', score.toString()), [score]);
   useEffect(() => localStorage.setItem('tw_cleared_spots', JSON.stringify(clearedSpots)), [clearedSpots]);
@@ -237,10 +245,11 @@ export default function App() {
     const unsubscribe = onSnapshot(roomRef, snapshot => {
       if (!snapshot.exists()) { setBuddy(null); setBuddyTrail([]); return; }
       const data = snapshot.data();
-      const peerId = data.participants?.find(id => id !== user?.uid);
-      const peer = peerId && data.members?.[peerId];
-      if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, location: locationForMap(peer.location), roomId: buddy.roomId } : current);
-      setBuddyTrail(normalizeLocations(peer?.visitedLocations ?? data.visitedLocations).map(point => [point.lng, point.lat]));
+      const peers = (data.participants || []).filter(id => id !== user?.uid).map(id => data.members?.[id]).filter(Boolean);
+      const peer = peers[0];
+      if (peer) setBuddy(current => current?.roomId === buddy.roomId ? { ...current, ...peer, peers, location: locationForMap(peer.location), roomId: buddy.roomId } : current);
+      const sharedPoints = peers.flatMap(member => normalizeLocations(member.visitedLocations)).concat(normalizeLocations(data.visitedLocations));
+      setBuddyTrail([...new Map(sharedPoints.map(point => [`${point.lng}:${point.lat}`, [point.lng, point.lat]])).values()]);
     });
     return unsubscribe;
   }, [buddy?.roomId, user?.uid]);
@@ -254,7 +263,7 @@ export default function App() {
     lastBuddySyncRef.current = { location: userLocation, at: now };
     updateDoc(doc(db, 'buddies', buddy.roomId), sanitizeBuddyData({ [`members.${user.uid}.uid`]: user.uid, [`members.${user.uid}.nickname`]: nickname, [`members.${user.uid}.location`]: normalizeLocation(userLocation), [`members.${user.uid}.visitedLocations`]: normalizeLocations(visitedLocations.slice(-150)), updatedAt: now }))
       .catch(error => console.error('Buddy trail sync failed', error));
-  }, [buddy?.roomId, user?.uid, userLocation, nickname]);
+  }, [buddy?.roomId, user?.uid, userLocation, nickname, visitedLocations]);
 
   useEffect(() => {
     if (!showLiquidLoader) return;
@@ -274,9 +283,9 @@ export default function App() {
   }, [showLiquidLoader]);
 
   useEffect(() => {
-    signInAnonymously(auth).catch((err) => console.error(err));
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
+        setProfileLoaded(false);
         setUser(currentUser);
         const userDocRef = doc(db, "users", currentUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -287,9 +296,19 @@ export default function App() {
           if (data.clearedSpots && data.clearedSpots.length > clearedSpots.length) setClearedSpots(data.clearedSpots);
           if (data.obtainedCards) setObtainedCards(previous => ({ ...previous, ...data.obtainedCards }));
           if (data.nickname) setNickname(data.nickname);
+          if (Array.isArray(data.visitedLocations) && data.visitedLocations.length) {
+            const cloudTrail = normalizeLocations(data.visitedLocations).map(point => [point.lng, point.lat]);
+            localStorage.setItem('tw_cloud_visited_locations', JSON.stringify(cloudTrail));
+            setVisitedLocations(previous => [...new Map([...cloudTrail, ...normalizeLocations(previous).map(point => [point.lng, point.lat])].map(point => [`${point[0]}:${point[1]}`, point])).values()]);
+          }
         } else {
-          await setDoc(userDocRef, { uid: currentUser.uid, nickname, score, clearedSpots, lastUpdated: new Date() });
+          await setDoc(userDocRef, sanitizeBuddyData({ uid: currentUser.uid, nickname, score, userPoints, clearedSpots, obtainedCards, visitedLocations, lastUpdated: new Date() }));
         }
+        setProfileLoaded(true);
+      } else {
+        setUser(null);
+        setProfileLoaded(false);
+        signInAnonymously(auth).catch((err) => console.error(err));
       }
     });
 
@@ -302,10 +321,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (user) {
-      setDoc(doc(db, "users", user.uid), { nickname, score, userPoints, clearedSpots, obtainedCards, lastUpdated: new Date() }, { merge: true });
+    if (user && profileLoaded) {
+      setDoc(doc(db, "users", user.uid), sanitizeBuddyData({ uid: user.uid, nickname, score, userPoints, clearedSpots, obtainedCards, visitedLocations: visitedLocations.slice(-150), lastUpdated: new Date() }), { merge: true })
+        .catch(error => console.error('User profile save failed', error));
     }
-  }, [score, userPoints, clearedSpots, obtainedCards, nickname, user]);
+  }, [score, userPoints, clearedSpots, obtainedCards, nickname, visitedLocations, user, profileLoaded]);
 
   useEffect(() => {
     if (isAppLoading || mapRef.current || !mapContainerRef.current) return;
@@ -398,6 +418,8 @@ export default function App() {
       if (element) {
         element.className = `map-native-marker mapboxgl-marker ${isCleared ? 'cleared' : 'locked'} ${isSelected ? 'active' : ''}`;
         const labelEl = element.querySelector('.marker-core-label');
+        const iconEl = element.querySelector('.marker-icon-img');
+        if (iconEl) iconEl.src = isCleared ? '/images/spot-cleared.png' : '/images/spot-locked.png';
         if (labelEl) labelEl.textContent = isCleared ? spot.name : '???';
         if (spot) {
           element.title = isCleared ? spot.name : '???';
@@ -437,12 +459,16 @@ export default function App() {
   };
 
   const handleAnswerSubmit = (selectedIdx) => {
+    if (answerLockRef.current || clearedSpots.includes(currentSpot.id)) return;
     if (!canAttemptMission) {
       setShowQuiz(false);
       setQuizFeedback('チェックポイントに近づくとミッションに挑戦できます。');
       return;
     }
     if (selectedIdx === currentSpot.quiz.ans) {
+      answerLockRef.current = true;
+      setFeedbackCorrect(true);
+      setIsSubmittingAnswer(true);
       const canClaim = canClaimSpotPoints(currentSpot.id);
 
       if (canClaim) {
@@ -470,14 +496,18 @@ export default function App() {
         setShowQuiz(false);
         setQuizSelected(null);
         setQuizFeedback('');
-        setIsEncyclopediaOpen(true);
+        setIsSubmittingAnswer(false);
         setShowCardPack(true);
       }, 1500);
     } else {
+      setFeedbackCorrect(false);
+      answerLockRef.current = true;
       setQuizFeedback('不正解。もう一度考えてみましょう。');
       setTimeout(() => {
         setQuizSelected(null);
         setQuizFeedback('');
+        setIsSubmittingAnswer(false);
+        answerLockRef.current = false;
       }, 2000);
     }
   };
@@ -499,36 +529,35 @@ export default function App() {
 
   const handleARShutter = () => {
     setIsFlash(true);
-    setTimeout(() => { setIsFlash(false); setShowARSuccess(true); setScore(prev => prev + 100); }, 200);
+    setTimeout(() => { setIsFlash(false); setShowARSuccess(true); }, 200);
   };
 
   const handleLinkGoogle = async () => {
     try {
       if (!auth.currentUser) return alert('ログイン状態を確認できません。');
-      await linkWithPopup(auth.currentUser, googleProvider);
-      alert('Googleアカウントとの連携に成功しました。');
-    } catch (error) {
-      alert('連携エラー: ' + error.message);
-    }
+      const result = await linkWithPopup(auth.currentUser, googleProvider);
+      setUser(result.user);
+      alert('Googleアカウントと連携しました。');
+    } catch (error) { alert(`Google連携に失敗しました: ${error.message}`); }
   };
-
+  const handleUnlinkProvider = async providerId => {
+    try { const current=auth.currentUser; if (!current) return; await unlink(current, providerId); await reload(current); setUser({ ...current }); alert('連携を解除しました。'); }
+    catch (error) { alert(`連携解除に失敗しました: ${error.message}`); }
+  };
   const handleLinkEmail = async (email, password) => {
     try {
       if (!auth.currentUser) return alert('ログイン状態を確認できません。');
+      if (password.length < 6) { alert('パスワードは6文字以上で入力してください。'); return; }
       const credential = EmailAuthProvider.credential(email, password);
-      await linkWithCredential(auth.currentUser, credential);
-      alert('メールアドレスでのアカウント連携に成功しました。');
+      const result = await linkWithCredential(auth.currentUser, credential);
+      setUser(result.user);
+      alert('メールアドレスと連携しました。');
     } catch (error) {
-      if (error.code === 'auth/email-already-in-use') {
-        alert('このメールアドレスは既に別のアカウントで使用されています。');
-      } else if (error.code === 'auth/weak-password') {
-        alert('パスワードは6文字以上で入力してください。');
-      } else {
-        alert('連携エラー: ' + error.message);
-      }
+      if (error.code === 'auth/email-already-in-use') alert('このメールアドレスはすでに別のアカウントで使用されています。');
+      else if (error.code === 'auth/weak-password') alert('パスワードは6文字以上で入力してください。');
+      else alert(`メール連携に失敗しました: ${error.message}`);
     }
   };
-
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden', backgroundColor: '#f9fafb' }}>
       {showSplash && <Splash />}
@@ -593,8 +622,10 @@ export default function App() {
                   onRecenter={handleRecenter}
                   onOpenQuiz={() => { if (canAttemptMission) { setQuizFeedback(''); setShowQuiz(true); } }}
                   onOpenAR={() => setShowAR(true)}
+                  onClose={() => { setDockDismissed(true); setIsManuallySelected(false); }}
                 />
               )}
+              {!shouldShowDock && (isNearCurrentSpot || isManuallySelected) && <button type="button" aria-label="スポット情報を再表示" onClick={() => setDockDismissed(false)} style={{position:'fixed',right:14,bottom:'calc(88px + env(safe-area-inset-bottom))',zIndex:31,border:'1px solid #bae6fd',borderRadius:999,padding:'8px 12px',background:'#fff',color:'#075985',boxShadow:'0 4px 14px #07598533'}}>スポット情報</button>}
             </div>
 
             {/* 特典・クーポンタブ */}
@@ -626,6 +657,7 @@ export default function App() {
                 steps={steps}
                 onGoogleLogin={handleLinkGoogle}
                 onEmailLogin={handleLinkEmail}
+                onUnlink={handleUnlinkProvider}
                 user={user}
               />
             )}
@@ -662,8 +694,10 @@ export default function App() {
             onStartCruise={() => setIsCruising(true)}
           />
 
-          <BuddyShakeModal isOpen={showBuddyModal} uid={user?.uid} nickname={nickname} location={userLocation} visitedLocations={visitedLocations} onClose={() => setShowBuddyModal(false)} onPaired={handleBuddyPaired} />
+          <BuddyShakeModal isOpen={showBuddyModal} currentRoomId={buddy?.roomId} uid={user?.uid} nickname={nickname} location={userLocation} visitedLocations={visitedLocations} onClose={() => setShowBuddyModal(false)} onPaired={handleBuddyPaired} />
 
+          {COUPONS_DATA.some(coupon => Number(localStorage.getItem(`tw_coupon_used_${coupon.id}`) || 0) > Date.now()) && <button type="button" onClick={() => setShowCouponHistory(true)} style={{position:'fixed',left:12,bottom:'calc(78px + env(safe-area-inset-bottom))',zIndex:9998,border:'1px solid #bae6fd',borderRadius:999,padding:'8px 12px',background:'#fff',color:'#075985'}}>使用中のクーポン</button>}
+          {showCouponHistory && <div role="dialog" aria-modal="true" style={{position:'fixed',inset:0,zIndex:12001,display:'grid',placeItems:'center',background:'#082f4988',padding:20}}><div style={{background:'#fff',padding:20,borderRadius:18,width:'min(360px,90vw)'}}><h3>使用済み・有効なクーポン</h3>{COUPONS_DATA.filter(coupon => Number(localStorage.getItem(`tw_coupon_used_${coupon.id}`) || 0) > Date.now()).map(coupon=><button key={coupon.id} onClick={()=>{setSelectedCoupon(coupon);setShowCouponHistory(false);}} style={{display:'block',width:'100%',padding:12,margin:'8px 0',border:'1px solid #bae6fd',borderRadius:10,background:'#effaff'}}>再表示：{coupon.title}</button>)}<button onClick={()=>setShowCouponHistory(false)}>閉じる</button></div></div>}
           {showQuiz && (
             <QuizModal
               currentSpot={currentSpot}
@@ -671,7 +705,9 @@ export default function App() {
               quizSelected={quizSelected}
               setQuizSelected={setQuizSelected}
               quizFeedback={quizFeedback}
-              onClose={() => { setShowQuiz(false); setQuizSelected(null); setQuizFeedback(''); }}
+              feedbackCorrect={feedbackCorrect}
+              isSubmitting={isSubmittingAnswer}
+              onClose={() => { setShowQuiz(false); setQuizSelected(null); setQuizFeedback(''); setIsSubmittingAnswer(false); answerLockRef.current = false; }}
               onSubmit={handleAnswerSubmit}
             />
           )}

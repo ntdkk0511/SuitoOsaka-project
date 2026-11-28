@@ -19,16 +19,15 @@ function UkiyoePlaceholder({ spot, className = '', photoStyle, containerStyle })
 
 export default function CardPackModal({ spot, isBuddyClear = false, onComplete, onClose }) {
   const [opened, setOpened] = useState(false);
-  const [absorbed, setAbsorbed] = useState(false);
   const [dragged, setDragged] = useState(false);
   const startX = useRef(null);
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-180, 180], [-18, 18]);
+  const cardX = useMotionValue(0);
+  const cardRotateY = useTransform(cardX, [-120, 120], [-28, 28]);
   const complete = () => {
     if (opened) return;
     setOpened(true);
-    window.setTimeout(() => setAbsorbed(true), 620);
-    window.setTimeout(() => onComplete?.(), 1500);
   };
   const handleKey = (event) => { if (event.key === 'ArrowRight' || event.key === ' ') complete(); };
 
@@ -54,10 +53,11 @@ export default function CardPackModal({ spot, isBuddyClear = false, onComplete, 
           onDragEnd={(event, info) => { if (Math.abs(info.offset.x) > 70 || Math.abs(info.velocity.x) > 450) complete(); else { x.set(0); setDragged(false); } }}
           onPointerUp={(event) => { if (!dragged && Math.abs(event.clientX - (startX.current ?? event.clientX)) > 70) complete(); }}
           onClick={() => { if (!opened && !dragged) complete(); }} aria-label="タップまたは左右にスワイプして開く" role="button" tabIndex={0}>水面をひらく</motion.div>
-        <div className={`pack-card ${opened ? (absorbed ? 'fly' : 'reveal') : ''}`}>
+        <motion.div drag={opened ? 'x' : false} dragConstraints={{left:-110,right:110}} dragElastic={0.16} style={{rotateY:cardRotateY,transformStyle:'preserve-3d'}} onDrag={(_, info)=>cardX.set(info.offset.x)} onDragEnd={()=>cardX.set(0)} className={`pack-card ${opened ? 'reveal' : ''}`}>
           <UkiyoePlaceholder spot={spot}/><h3>{spot.name}</h3><small>{spot.englishName}</small>{isBuddyClear && <span className="buddy-badge">一緒に見つけた記憶</span>}
-        </div>
-        <p className="cardpack-hint">{opened ? 'コレクションに記録しました' : 'タップ、または左右にスワイプ'}</p>
+        </motion.div>
+        <p className="cardpack-hint">{opened ? '受け取るか、閉じるまでこのカードを表示します' : 'タップ、または左右にスワイプして開く'}</p>
+        {opened && <div style={{position:'absolute',bottom:'-9%',display:'flex',gap:10}}><button style={{border:0,borderRadius:999,padding:'11px 18px',fontWeight:800}} onClick={onComplete}>受け取る</button><button style={{border:0,borderRadius:999,padding:'11px 18px',fontWeight:800}} onClick={onClose}>閉じる</button></div>}
       </div>
     </div>
   );

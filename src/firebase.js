@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 
 // 🔥 Firebaseコンソールで取得したご自身のプロジェクトの設定に差し替えてください
 const firebaseConfig = {
-  apiKey: "AIzaSyBCt5FDPLaVinqz07LYi-9HR9zSXKb7xc0",
-  authDomain: "time-water-osaka.firebaseapp.com",
-  projectId: "time-water-osaka",
-  storageBucket: "time-water-osaka.firebasestorage.app",
-  messagingSenderId: "133699239921",
-  appId: "1:133699239921:web:b5c5eea720b582d14b0e50"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Firebaseの初期化

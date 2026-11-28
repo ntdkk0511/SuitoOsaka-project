@@ -1,9 +1,10 @@
 import React from 'react';
 
-export default function BottomDock({ currentSpot, isCurrentCleared, isNearSpot, distanceLimitEnabled = true, remainingDistance, onRecenter, onOpenQuiz, onOpenAR }) {
+export default function BottomDock({ currentSpot, isCurrentCleared, isNearSpot, distanceLimitEnabled = true, remainingDistance, onRecenter, onOpenQuiz, onOpenAR, onClose }) {
   return (
     <footer className="integrated-bottom-dock" style={{ bottom: 'calc(78px + env(safe-area-inset-bottom, 0px))', position: 'fixed', left: 0, right: 0, zIndex: 30 }}>
-      <div className="embedded-story-card">
+      <div className="embedded-story-card" style={{position:'relative',paddingRight:52}}>
+        <button type="button" onClick={onClose} aria-label="スポット情報を閉じる" style={{position:'absolute',right:12,top:10,width:32,height:32,border:0,borderRadius:'50%',background:'#e0f2fe',color:'#075985',fontSize:20,fontWeight:800,zIndex:2}}>×</button>
         <div className="card-meta">
           <span className="badge-purple">{isCurrentCleared ? currentSpot.englishName : '???'}</span>
           <span className={`badge-status ${isCurrentCleared ? 'cleared-text' : 'locked-text'}`}>

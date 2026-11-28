@@ -72,6 +72,14 @@ button:focus-visible { outline: 3px solid #287f9b; outline-offset: 3px; }
 .ready-ar { background: linear-gradient(145deg,#287f9b,#80cfe3); }
 .map-native-marker.active .marker-core-label { background: #287f9b; }
 
+/* Keep the map visible while making every dock easy to dismiss. */
+.integrated-bottom-dock { padding: 8px 12px 9px; gap: 6px; }
+.embedded-story-card { padding: 9px 12px; }
+.embedded-story-card .card-desc { margin: 5px 0; line-height: 1.35; }
+.compass-navigation-zone { min-height: 44px; }
+.bottom-tab-bar { height: 58px; }
+.bottom-tab { height: 48px; }
+
 @media (max-width: 480px) {
   .integrated-bottom-dock { padding: 12px 14px calc(18px + env(safe-area-inset-bottom)); gap: 10px; }
   .embedded-story-card { padding: 12px 14px; }
@@ -422,3 +430,10 @@ button:focus-visible { outline: 3px solid #287f9b; outline-offset: 3px; }
 .holo-score-up { font-size: 2rem; font-weight: 700; color: var(--cyber-blue) !important; text-shadow: 0 0 12px var(--cyber-blue); margin-bottom: 20px; }
 .holo-close-btn { background: var(--cyber-blue); border: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; width: 100%; box-shadow: 0 0 15px rgba(0, 191, 255, 0.4); color: #ffffff !important; }
 .holo-close-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+.integrated-bottom-dock { padding: 8px 12px 9px; gap: 6px; }
+.embedded-story-card { padding: 9px 12px; }
+.embedded-story-card .card-desc { margin: 5px 0; line-height: 1.35; }
+.compass-navigation-zone { min-height: 44px; }
+.bottom-tab-bar { height: 58px; }
+.bottom-tab { height: 48px; }
