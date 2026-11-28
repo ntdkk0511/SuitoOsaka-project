@@ -25,13 +25,15 @@ export default function BottomDock({ currentSpot, isCurrentCleared, isNearSpot, 
         </p>
       </div>
       <div className="compass-navigation-zone">
-        <button className="nav-action-btn-side" onClick={onRecenter}>
+        
+        {/*<button className="nav-action-btn-side" onClick={onRecenter}>
           <span className="side-icon" aria-hidden="true">◎</span><span className="side-label">現在地</span>
-        </button>
+        </button>*/}
+        
         <div className="main-action-core">
           {isCurrentCleared ? <>
-            <button className="core-trigger ready-ar" onClick={onOpenAR} aria-label="ARで再体験"><span className="core-icon">✧</span></button>
-            <span className="core-label">ARで再体験</span>
+            {/*<button className="core-trigger ready-ar" onClick={onOpenAR} aria-label="ARで再体験"><span className="core-icon">✧</span></button>
+            <span className="core-label">ARで再体験</span>*/}
           </> : <>
             <button className="core-trigger ready-unlock" onClick={onOpenQuiz} disabled={!isNearSpot} style={{ opacity: isNearSpot ? 1 : 0.45, filter: isNearSpot ? 'none' : 'grayscale(1)', cursor: isNearSpot ? 'pointer' : 'not-allowed' }} aria-label="ミッションに挑戦"><span className="core-icon">◇</span></button>
             <span className="core-label">{!distanceLimitEnabled && isNearSpot ? 'ミッションに挑戦！（テスト許可中）' : isNearSpot ? 'ミッションに挑戦する！' : '距離を近づけて挑戦'}</span>

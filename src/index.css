@@ -118,7 +118,7 @@ button:focus-visible { outline: 3px solid #287f9b; outline-offset: 3px; }
 .card-title { color: var(--osaka-ink); }
 .card-desc { color: var(--text-brown-medium) !important; }
 .core-trigger { box-shadow: 0 7px 20px rgba(2, 132, 199, .25); }
-.ready-unlock, .ready-ar { background: linear-gradient(145deg, #0284c7, #38bdf8); }
+/*.ready-unlock, .ready-ar { background: linear-gradient(145deg, #0284c7, #38bdf8); }*/
 
 .aquatic-modal-overlay { background: rgba(13, 43, 49, .28); backdrop-filter: blur(9px) saturate(120%); }
 .aquatic-modal-content { border-radius: 24px; animation-timing-function: cubic-bezier(.22, 1, .36, 1); }

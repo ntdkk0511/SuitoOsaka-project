@@ -26,7 +26,7 @@ import Splash from './components/Splash';
 import Header from './components/Header';
 import BottomDock from './components/BottomDock';
 import QuizModal from './components/QuizModal';
-import ARViewport from './components/ARViewport';
+//import ARViewport from './components/ARViewport';
 import BottomTabBar from './components/BottomTabBar';
 import MyPageView from './components/MyPageView';
 import LiquidLoader from './components/LiquidLoader';
@@ -676,7 +676,8 @@ export default function App() {
             />
           )}
 
-          {showAR && (
+          
+          {/*showAR && (
             <ARViewport
               currentSpot={currentSpot}
               isFlash={isFlash}
@@ -685,7 +686,8 @@ export default function App() {
               onClose={() => setShowAR(false)}
               onCloseSuccess={() => { setShowARSuccess(false); setShowAR(false); }}
             />
-          )}
+          )*/}
+          
         </>
       )}
     </div>
